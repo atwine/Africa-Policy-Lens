@@ -173,7 +173,9 @@ with st.sidebar:
         "🇰🇪 Kenya": "Data Protection Act, 2019",
         "🇳🇬 Nigeria": "NDPA, 2023",
         "🇧🇼 Botswana": "Data Protection Act, 2018",
-        "🌍 African Union": "Malabo Convention, 2014",
+        "�🇿 Eswatini": "Data Protection Act, 2022",
+        "🇿🇼 Zimbabwe": "Data Protection Act, 2021",
+        "�🌍 African Union": "Malabo Convention, 2014",
     }
     for flag_country, law in countries.items():
         st.markdown(f"**{flag_country}**  \n*{law}*")
