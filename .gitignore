@@ -26,6 +26,7 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+*.code-workspace
 
 # ── Devin CLI local config (machine-specific) ──────────────────
 .devin/
