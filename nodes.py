@@ -9,6 +9,7 @@ fields to update.
 """
 
 import json
+import re
 import sys
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -303,17 +304,43 @@ def synthesize_node(state: dict) -> dict:
     system_prompt = load_prompt("synthesizer.txt")
     user_question = state["user_question"]
 
-    # Build the full context from all sub-questions
+    # Build grounded context blocks — each sub-question gets a clearly labelled section
+    # with its own passage numbers so the synthesizer knows exactly what evidence is
+    # available per country and cannot bleed citations across sections.
     full_context_parts = []
+    passage_offset = 0  # Track global passage numbers across sub-questions
     for i, sq in enumerate(state["sub_questions"]):
-        context = state["retrieved_chunks"].get(str(i), "No context retrieved.")
-        full_context_parts.append(
-            f"--- Sub-question {i+1}: {sq['question']} ---\n"
-            f"Target: {sq['target_country']}\n\n"
-            f"{context}"
-        )
+        raw_context = state["retrieved_chunks"].get(str(i), "")
 
-    full_context = "\n\n" + "=" * 40 + "\n\n".join(full_context_parts)
+        if not raw_context or raw_context.startswith("No passages met"):
+            # No usable evidence for this sub-question — tell the LLM explicitly
+            block = (
+                f"═══ BLOCK {i+1}: {sq['target_country'].upper()} ═══\n"
+                f"Sub-question: {sq['question']}\n"
+                f"Evidence: No sufficiently relevant passages were retrieved. "
+                f"Do NOT fabricate provisions for this country.\n"
+            )
+        else:
+            # Renumber passages sequentially so the LLM can cite them unambiguously
+            chunks = raw_context.split("\n\n---\n\n")
+            renumbered = []
+            for j, chunk in enumerate(chunks):
+                global_num = passage_offset + j + 1
+                # Replace "[Passage N]" with the global passage number
+                chunk = re.sub(r"\[Passage \d+\]", f"[Passage {global_num}]", chunk, count=1)
+                renumbered.append(chunk)
+            passage_offset += len(chunks)
+
+            block = (
+                f"═══ BLOCK {i+1}: {sq['target_country'].upper()} ═══\n"
+                f"Sub-question: {sq['question']}\n"
+                f"Available passages: {passage_offset - len(chunks) + 1}–{passage_offset}\n\n"
+                + "\n\n---\n\n".join(renumbered)
+            )
+
+        full_context_parts.append(block)
+
+    full_context = "\n\n".join(full_context_parts)
 
     log_entry = "📝 **Synthesizing** final answer from all retrieved context..."
 
@@ -321,7 +348,10 @@ def synthesize_node(state: dict) -> dict:
         SystemMessage(content=system_prompt),
         HumanMessage(content=(
             f"Original user question: {user_question}\n\n"
-            f"Research findings:\n{full_context}\n\n"
+            f"Research findings (organised by country block):\n\n{full_context}\n\n"
+            f"IMPORTANT: Only cite passages that appear in the blocks above. "
+            f"If a block says 'Do NOT fabricate', state that information was unavailable "
+            f"for that country rather than inventing provisions.\n\n"
             f"Please provide a comprehensive, formal answer with specific legal citations."
         ))
     ])

@@ -72,6 +72,9 @@ def search_all(
     return results
 
 
+RELEVANCE_THRESHOLD = 0.45  # Chunks below this score are too noisy to be useful
+
+
 def format_context(results: list) -> str:
     """
     Formats search results into a readable context string
@@ -79,12 +82,25 @@ def format_context(results: list) -> str:
 
     Each chunk is wrapped with its metadata (source, section, page)
     so the LLM can cite specific sections in its answer.
+
+    Chunks with a relevance score below RELEVANCE_THRESHOLD are discarded
+    to avoid passing noisy, off-topic passages to the synthesizer.
     """
     if not results:
         return "No relevant passages found."
 
+    # Filter out low-confidence chunks before building context
+    filtered = [(doc, score) for doc, score in results if score >= RELEVANCE_THRESHOLD]
+
+    if not filtered:
+        # All chunks fell below threshold — return a clear signal rather than noise
+        return (
+            f"No passages met the minimum relevance threshold ({RELEVANCE_THRESHOLD}). "
+            "The documents may not contain specific provisions on this topic."
+        )
+
     context_parts = []
-    for i, (doc, score) in enumerate(results, 1):
+    for i, (doc, score) in enumerate(filtered, 1):
         meta = doc.metadata
         context_parts.append(
             f"[Passage {i}] "

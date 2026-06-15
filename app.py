@@ -14,9 +14,49 @@ Usage:
     streamlit run app.py
 """
 
+import json
+import os
+from datetime import datetime
+import markdown as md  # converts LLM markdown text → HTML for safe injection
 import streamlit as st
 from graph import run_query
 from config import DEMO_QUESTIONS
+
+# Directory where completed sessions are persisted
+SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "sessions")
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+
+def save_session(question: str, result: dict) -> str:
+    """Saves a completed query result to a timestamped JSON file. Returns the file path."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Sanitise question to a short slug for the filename
+    slug = "".join(c if c.isalnum() or c in " _-" else "" for c in question[:40]).strip().replace(" ", "_")
+    filename = f"{ts}_{slug}.json"
+    filepath = os.path.join(SESSIONS_DIR, filename)
+    payload = {
+        "timestamp": datetime.now().isoformat(),
+        "question": question,
+        "final_answer": result.get("final_answer", ""),
+        "process_log": result.get("process_log", []),
+        "sub_questions": result.get("sub_questions", []),
+    }
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    return filepath
+
+
+def load_sessions() -> list[dict]:
+    """Returns all saved sessions sorted newest-first."""
+    sessions = []
+    for fname in sorted(os.listdir(SESSIONS_DIR), reverse=True):
+        if fname.endswith(".json"):
+            try:
+                with open(os.path.join(SESSIONS_DIR, fname), "r", encoding="utf-8") as f:
+                    sessions.append(json.load(f))
+            except Exception:
+                pass  # Skip unreadable files
+    return sessions
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +242,31 @@ with st.sidebar:
     st.markdown("---")
     st.caption("MVP v0.1 · Runs entirely locally · No API keys needed")
 
+    # ── Past Sessions ────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown('<div class="sidebar-section">Past Sessions</div>', unsafe_allow_html=True)
+    past = load_sessions()
+    if not past:
+        st.caption("No saved sessions yet. Run a query to start.")
+    else:
+        for s in past[:10]:  # Show the 10 most recent
+            ts_label = s.get("timestamp", "")[:16].replace("T", " ")
+            q_short   = s.get("question", "")[:55] + ("…" if len(s.get("question", "")) > 55 else "")
+            with st.expander(f"🕐 {ts_label}  —  {q_short}"):
+                st.markdown(f"**Q:** {s['question']}")
+                st.markdown("**Answer:**")
+                # Show only the main answer (before disclaimer separator)
+                full_ans = s.get("final_answer", "")
+                main = full_ans.rsplit("\n\n---\n", 1)[0] if "\n\n---\n" in full_ans else full_ans
+                st.markdown(main)
+                st.download_button(
+                    label="⬇️ Download",
+                    data=s.get("final_answer", ""),
+                    file_name=f"policylens_{ts_label.replace(' ', '_')}.txt",
+                    mime="text/plain",
+                    key=f"dl_{s.get('timestamp','')}",
+                )
+
 
 # ---------------------------------------------------------------------------
 # Hero header
@@ -316,6 +381,9 @@ if selected_question:
         with st.spinner("Running agentic pipeline..."):
             result = run_query(selected_question)
 
+        # Persist the completed session to disk
+        save_session(selected_question, result)
+
         # Render the final complete log
         collected_log = result.get("process_log", [])
         render_log(collected_log)
@@ -338,8 +406,12 @@ if selected_question:
         else:
             main_answer, disclaimer = answer, ""
 
+        # Convert the LLM's markdown to HTML, then inject it inside the styled card div.
+        # Splitting the open/close tags across separate st.markdown() calls does NOT work
+        # because each call is its own DOM element — Streamlit never merges them.
+        answer_html = md.markdown(main_answer, extensions=["nl2br", "tables"])
         st.markdown(
-            f'<div class="answer-card">{main_answer}</div>',
+            f'<div class="answer-card">{answer_html}</div>',
             unsafe_allow_html=True
         )
 

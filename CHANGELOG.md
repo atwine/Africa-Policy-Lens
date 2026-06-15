@@ -12,13 +12,33 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 > Features planned for post-MVP development. See [Roadmap](README.md#roadmap-post-mvp) in README.
 
 - Streaming agent log updates within Streamlit using `graph.stream()`
-- Additional African country documents (Rwanda, Tanzania, Ghana, Zimbabwe)
+- Additional African country documents (Rwanda, Tanzania, Ghana)
 - Side-by-side clause comparison view in the UI
 - Citation linking — click a citation to jump to the source PDF page
 - Hugging Face Spaces deployment for remote Community of Practice access
 - DTA/MTA draft generation based on applicable jurisdiction requirements
 - French-language document support for Francophone African laws
 - Parallel sub-question retrieval for faster pipeline execution
+
+---
+
+## [0.1.2] — 2026-06-15
+
+### Fixed
+
+- **Analysis panel blank** — `main_answer` was injected raw into an HTML `<div>` via `unsafe_allow_html=True`; Streamlit renders each `st.markdown()` call as an independent DOM node, so a split open/close `<div>` pair never wraps the content. Fixed by converting the LLM's markdown to HTML using the `markdown` library and injecting the full card as a single atomic `st.markdown()` call (`app.py`)
+- **`config.py` IndentationError** — a stray leading space before the module docstring (`  """`) caused Python to raise `IndentationError: unexpected indent` on startup, crashing the entire app on import; removed the leading whitespace (`config.py`)
+
+### Added
+
+- **Session history persistence** — every completed query is now auto-saved to `sessions/<timestamp>_<slug>.json` (question, final answer, process log, sub-questions). A "Past Sessions" section in the sidebar lists the 10 most recent sessions, each expandable to read the full answer and download it as `.txt` (`app.py`)
+- `sessions/` directory created automatically on startup via `os.makedirs(..., exist_ok=True)`
+
+### Changed
+
+- **Relevance score threshold filter** (`retrieval.py`) — chunks with a similarity score below `0.45` are now discarded in `format_context()` before being passed to the synthesizer. Previously low-confidence chunks (e.g. score 0.3) were passed as authoritative context, causing the LLM to either waste context window or hallucinate section connections. When all chunks for a sub-question fall below threshold, the synthesizer receives an explicit "no sufficiently relevant passages" message instead of silence
+- **Passage grounding in synthesizer** (`nodes.py`, `prompts/synthesizer.txt`) — context sent to the synthesizer is now structured into labelled `BLOCK N: COUNTRY` sections with globally renumbered passages and declared passage ranges per block. Blocks with no usable evidence carry an explicit `"Do NOT fabricate provisions"` instruction. The synthesizer prompt updated with a matching rule: cite only from the block's declared passages; if a block says do not fabricate, state that information was unavailable for that country
+- `markdown` package (already in venv) imported in `app.py` to power the `md.markdown()` HTML conversion with `nl2br` and `tables` extensions
 
 ---
 
@@ -131,7 +151,8 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-[Unreleased]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/atwine/Africa-Policy-Lens/releases/tag/v0.0.1

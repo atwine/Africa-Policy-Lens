@@ -40,5 +40,8 @@ dist/
 build/
 *.egg-info/
 
+# ── Session history (user-specific, not for repo) ─────────────
+sessions/*.json
+
 # ── Logs ──────────────────────────────────────────────────────
 *.log
