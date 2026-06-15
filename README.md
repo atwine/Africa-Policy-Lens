@@ -133,13 +133,167 @@ User Question
 
 ## Hardware Requirements
 
-| Resource | Minimum | This Machine |
-|---|---|---|
-| GPU VRAM | 6 GB | NVIDIA RTX 3050 (6 GB) |
-| System RAM | 16 GB | 24 GB DDR5 |
-| Storage | 10 GB free | NVMe SSD |
-| CUDA | 11.8+ | 12.7 |
-| OS | Windows 10/11 or Linux | Windows |
+| Resource | Minimum | Current (Dev) | A100 (Recommended) |
+|---|---|---|---|
+| GPU VRAM | 6 GB | RTX 3050 (6 GB) | A100 40 GB or 80 GB |
+| System RAM | 16 GB | 24 GB DDR5 | 80–320 GB (cloud instance) |
+| Storage | 10 GB free | NVMe SSD | 200 GB+ (for larger model variants) |
+| CUDA | 11.8+ | 12.7 | 11.8+ (A100 supports up to 12.x) |
+| OS | Windows 10/11 or Linux | Windows | Linux (Ubuntu 20.04 / 22.04 recommended) |
+
+---
+
+## Running on an A100 (Cloud / HPC)
+
+> These notes apply to any A100 instance — Google Colab Pro+, Lambda Labs, Vast.ai, RunPod, or a university HPC cluster. The pipeline still uses Ollama, so the code changes are minimal.
+
+### Why the A100 Changes Things
+
+On the RTX 3050 (6 GB VRAM), only `llama3.1:8b` fits comfortably. The A100's 40–80 GB VRAM opens up much larger models that will produce significantly better legal reasoning and citation quality:
+
+| Model | VRAM needed | Quality vs 8B | Notes |
+|---|---|---|---|
+| `llama3.1:8b` | ~5 GB | baseline | Current dev model |
+| `llama3.1:70b` | ~40 GB | substantially better | Fits on A100 40 GB (Q4) |
+| `llama3.1:70b` (full precision) | ~140 GB | best | Needs A100 80 GB x2 |
+| `llama3.3:70b` | ~40 GB | better instruction following | Good alternative to 3.1:70b |
+| `qwen2.5:72b` | ~43 GB | strong legal reasoning | Worth benchmarking |
+| `mistral-large:123b` | ~70 GB | very strong | Fits on A100 80 GB (Q4) |
+
+For a first A100 experiment, **`llama3.1:70b`** is the recommended upgrade — same model family as the current setup, so the prompts need no changes.
+
+---
+
+### Step 1 — Install Ollama on Linux
+
+```bash
+# Install Ollama (Linux one-liner)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Verify it starts and detects the GPU
+ollama serve &
+ollama list
+```
+
+Ollama automatically uses CUDA if available. Verify GPU detection:
+
+```bash
+nvidia-smi                        # confirm A100 is visible
+ollama run llama3.1:8b "hello"   # quick smoke test
+```
+
+---
+
+### Step 2 — Pull the Larger Model
+
+```bash
+# Pull the 70B model (takes ~25 min on a fast connection — it's ~40 GB)
+ollama pull llama3.1:70b
+
+# Confirm it's listed
+ollama list
+```
+
+---
+
+### Step 3 — Clone the Repo and Set Up
+
+```bash
+git clone https://github.com/atwine/Africa-Policy-Lens.git
+cd Africa-Policy-Lens
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Place your PDF documents in `docs/` (see README setup section), then run ingestion:
+
+```bash
+python ingest.py
+```
+
+---
+
+### Step 4 — Switch the Model in `config.py`
+
+Only **one line** needs to change:
+
+```python
+# config.py — change this line
+LLM_MODEL = "llama3.1:70b"    # was "llama3.1:8b"
+
+# Optionally raise temperature slightly — larger models handle 0.1–0.2 well
+LLM_TEMPERATURE = 0.1          # no change needed
+
+# You can also increase retrieval depth on A100 since synthesis is faster
+TOP_K = 7                      # was 5 — more context per sub-question
+MAX_RETRIES = 3                # was 2 — afford one extra retry
+```
+
+The embedding model (`nomic-embed-text`) is unchanged — it's already fast and small.
+
+---
+
+### Step 5 — Run the App
+
+```bash
+# If running on a remote instance, expose the Streamlit port
+streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+
+# Then access via your instance's public IP:
+# http://<instance-ip>:8501
+```
+
+If your cloud provider requires it, open port 8501 in the firewall / security group settings.
+
+For Jupyter-based environments (Colab, JupyterHub), use a tunnel instead:
+
+```bash
+# In a notebook cell — creates a public URL via localtunnel
+!npm install -g localtunnel
+!streamlit run app.py &>/dev/null &
+!npx localtunnel --port 8501
+```
+
+---
+
+### Step 6 — Benchmark the Improvement
+
+Run the same 4 demo questions on both models and compare:
+
+```python
+# benchmark.py — run from the project root
+import time, sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+from graph import run_query
+from config import DEMO_QUESTIONS
+
+for i, q in enumerate(DEMO_QUESTIONS, 1):
+    start = time.time()
+    result = run_query(q)
+    elapsed = time.time() - start
+    rewrites = sum(1 for l in result["process_log"] if l.startswith("🔄"))
+    print(f"\nQ{i} | {elapsed:.0f}s | rewrites={rewrites}")
+    print(result["final_answer"][:400])
+    print("-" * 60)
+```
+
+Things to note in your comparison:
+- **Citation specificity** — does the 70B cite more precise section numbers?
+- **Retry rate** — does the evaluator need fewer rewrites (better first-pass retrieval quality)?
+- **Answer structure** — is the synthesis more formally structured?
+- **Hallucination check** — manually verify cited sections exist in the source PDFs
+
+---
+
+### Tips for A100 Experiments
+
+- **Parallel sub-question retrieval** — on the A100 you have headroom to run sub-questions concurrently with `asyncio`. This is the single biggest speed improvement available beyond model size.
+- **Larger chunks** — with a 70B model's larger context window (128K tokens), you can safely increase `CHUNK_SIZE_CHARS` to `2500–3000` and `TOP_K` to `8–10` for richer context per query. Re-run `ingest.py` after changing chunk settings.
+- **Embedding upgrade** — consider swapping `nomic-embed-text` for `mxbai-embed-large` (`ollama pull mxbai-embed-large`) which has a larger embedding dimension (1024 vs 768) and may improve retrieval precision on legal text. Requires wiping and re-running ingestion.
+- **Quantisation** — Ollama uses Q4_K_M quantisation by default for 70B models. If you have an A100 80 GB, you can pull the full-precision variant for marginally better quality at the cost of ~3× more VRAM.
+- **Keep Ollama's base URL the same** — `config.py` already uses `OLLAMA_BASE_URL = "http://localhost:11434"`, which works identically on Linux.
 
 ---
 
