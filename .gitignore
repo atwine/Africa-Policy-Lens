@@ -1,0 +1,44 @@
+# ── Virtual environment ────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Python cache ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── ChromaDB persistent storage (large binary, rebuilt by ingest.py) ──
+chroma_db/
+
+# ── Source PDFs (large binaries — obtain separately, see README) ──
+docs/*.pdf
+
+# ── OS artefacts ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Devin CLI local config (machine-specific) ──────────────────
+.devin/
+
+# ── Environment variables / secrets ───────────────────────────
+.env
+.env.*
+*.key
+
+# ── Build artefacts ───────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
