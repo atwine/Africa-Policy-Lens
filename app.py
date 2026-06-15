@@ -221,9 +221,9 @@ st.caption("Click any question below to run it through the full agentic pipeline
 
 btn_labels = [
     ("🔀", "Compare SA & Kenya", "Data sharing alignment & conflicts for research"),
-    ("🏥", "Compliance: SA, Nigeria & Botswana", "Safeguards for cross-border health data"),
-    ("🌍", "Multi-country gap analysis", "What supports & hinders public health data sharing"),
-    ("🏛️", "National vs AU Malabo", "Common themes & divergences at national vs continental level"),
+    ("🏥", "Health data: Nigeria, Eswatini & Zimbabwe", "Safeguards for cross-border health data"),
+    ("🌍", "Eswatini & Zimbabwe vs AU Malabo", "Cross-border transfer rules vs continental framework"),
+    ("🏛️", "All 7 jurisdictions", "Data subject rights & consent across the full knowledge base"),
 ]
 
 col1, col2 = st.columns(2, gap="medium")

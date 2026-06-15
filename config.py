@@ -80,7 +80,7 @@ DOCUMENTS = {
 # ---------------------------------------------------------------------------
 DEMO_QUESTIONS = [
     "Where do the data protection laws of South Africa and Kenya align versus conflict with each other on data sharing for research?",
-    "What conditions and safeguards are required for sharing health data across South Africa, Nigeria, and Botswana?",
-    "What legal mechanisms currently support, and what gaps hinder, sharing public health data across South Africa, Kenya, and Nigeria?",
-    "What are the common themes between data governance at the national level versus the AU Malabo Convention, and where are there divergences?"
+    "What conditions and safeguards are required for sharing health data across Nigeria, Eswatini, and Zimbabwe?",
+    "How do Eswatini and Zimbabwe's data protection laws compare to the AU Malabo Convention on cross-border data transfers?",
+    "What are the common themes and divergences across all seven jurisdictions on data subject rights and consent requirements?"
 ]
