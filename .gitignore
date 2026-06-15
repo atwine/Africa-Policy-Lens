@@ -13,8 +13,8 @@ __pycache__/
 # ── ChromaDB persistent storage (large binary, rebuilt by ingest.py) ──
 chroma_db/
 
-# ── Source PDFs (large binaries — obtain separately, see README) ──
-docs/*.pdf
+# ── Source PDFs are committed directly (all <1 MB, text-based) ──
+# docs/*.pdf  ← intentionally NOT excluded
 
 # ── OS artefacts ───────────────────────────────────────────────
 .DS_Store

@@ -58,6 +58,16 @@ DOCUMENTS = {
         "document_type": "binding_law",
         "document_name": "Data Protection Act, 2018 (Botswana)"
     },
+    "eswatini.pdf": {
+        "country": "Eswatini",
+        "document_type": "binding_law",
+        "document_name": "Data Protection Act, 2022 (Eswatini)"
+    },
+    "zimbabwe1.pdf": {
+        "country": "Zimbabwe",
+        "document_type": "binding_law",
+        "document_name": "Data Protection Act [Chapter 11:12], 2021 (Zimbabwe)"
+    },
     "au_malabo_convention.pdf": {
         "country": "African Union",
         "document_type": "binding_law",

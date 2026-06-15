@@ -22,6 +22,23 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [0.1.1] — 2026-06-15
+
+### Added
+- `docs/eswatini.pdf` — Data Protection Act, 2022 (Eswatini) · 32 pages · 60 chunks
+- `docs/zimbabwe1.pdf` — Data Protection Act [Chapter 11:12], 2021 (Zimbabwe) · 37 pages · 81 chunks
+- Eswatini and Zimbabwe registered in `config.py` DOCUMENTS registry
+- `prompts/planner.txt` updated: Eswatini and Zimbabwe added to available countries list
+
+### Changed
+- Total knowledge base: 442 → 583 chunks across 7 jurisdictions (6 countries + AU)
+- `.gitignore` updated: PDFs are now committed directly (all <1 MB, text-based, total ~4.4 MB)
+- `.gitattributes` updated: PDF files marked as binary to prevent line-ending conversion
+- README knowledge base table updated to reflect 7 documents and 583 chunks
+- A100 migration guide added to README (model comparison, Linux setup, config changes, benchmarking tips)
+
+---
+
 ## [0.1.0] — 2026-06-15
 
 **MVP release.** First working end-to-end agentic RAG pipeline for African data protection law analysis. Demonstrated full Plan → Retrieve → Evaluate → Rewrite → Synthesize flow on 5 legal documents across 5 jurisdictions.
@@ -114,6 +131,7 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-[Unreleased]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/atwine/Africa-Policy-Lens/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/atwine/Africa-Policy-Lens/releases/tag/v0.0.1

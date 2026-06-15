@@ -52,9 +52,9 @@ Standard RAG fails on legal questions because:
 
 ## Knowledge Base (5 Documents, 442 Chunks)
 
-![chunks](https://img.shields.io/badge/Total%20Chunks-442-0ea5e9?style=flat-square)
-![docs](https://img.shields.io/badge/Source%20Documents-5-6366f1?style=flat-square)
-![countries](https://img.shields.io/badge/Countries-4%20%2B%20AU-14b8a6?style=flat-square)
+![chunks](https://img.shields.io/badge/Total%20Chunks-583-0ea5e9?style=flat-square)
+![docs](https://img.shields.io/badge/Source%20Documents-7-6366f1?style=flat-square)
+![countries](https://img.shields.io/badge/Countries-6%20%2B%20AU-14b8a6?style=flat-square)
 
 | Country | Law | Chunks |
 |---|---|---|
@@ -62,6 +62,8 @@ Standard RAG fails on legal questions because:
 | 🇰🇪 Kenya | Data Protection Act No. 24 of 2019 | ![64](https://img.shields.io/badge/64%20chunks-1d4ed8?style=flat-square) |
 | 🇳🇬 Nigeria | Nigeria Data Protection Act (NDPA), 2023 | ![78](https://img.shields.io/badge/78%20chunks-1d4ed8?style=flat-square) |
 | 🇧🇼 Botswana | Data Protection Act, 2018 | ![40](https://img.shields.io/badge/40%20chunks-1d4ed8?style=flat-square) |
+| 🇸🇿 Eswatini | Data Protection Act, 2022 | ![60](https://img.shields.io/badge/60%20chunks-1d4ed8?style=flat-square) |
+| 🇿🇼 Zimbabwe | Data Protection Act [Chapter 11:12], 2021 | ![81](https://img.shields.io/badge/81%20chunks-1d4ed8?style=flat-square) |
 | 🌍 African Union | Malabo Convention on Cyber Security and Personal Data Protection, 2014 | ![78](https://img.shields.io/badge/78%20chunks-1d4ed8?style=flat-square) |
 
 Each chunk carries structured metadata: `country`, `document_name`, `document_type`, `section_heading`, `start_page`, `end_page`, `chunk_index`.
