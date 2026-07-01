@@ -14,6 +14,7 @@ Usage:
 
 import json
 import os
+import re
 from pathlib import Path
 from datetime import datetime
 import markdown as md  # converts LLM markdown text -> HTML for safe injection
@@ -136,6 +137,39 @@ def render_result(result: dict):
         m1.metric("Sub-questions", len(result.get("sub_questions", [])))
         m2.metric("Searches run", searches)
         m3.metric("Query rewrites", retries)
+
+
+def is_in_scope(question: str) -> bool:
+    """
+    Quick heuristic to detect greetings and empty/off-topic questions that
+    should not trigger the full agentic pipeline.
+    """
+    q = question.strip().lower()
+    if not q:
+        return False
+
+    # Common greetings, thanks, and one-word acknowledgements
+    out_of_scope_patterns = [
+        r"^\s*hi+\s*$",
+        r"^\s*hello\s*$",
+        r"^\s*hey\s*$",
+        r"^\s*good\s+(morning|afternoon|evening)\s*$",
+        r"^\s*how\s+are\s+you\s*$",
+        r"^\s*what'?s\s+up\s*$",
+        r"^\s*thank\s*you\s*$",
+        r"^\s*thanks\s*$",
+        r"^\s*ok\s*$",
+        r"^\s*okay\s*$",
+        r"^\s*yes\s*$",
+        r"^\s*no\s*$",
+        r"^\s*bye\s*$",
+        r"^\s*goodbye\s*$",
+    ]
+    for pattern in out_of_scope_patterns:
+        if re.match(pattern, q):
+            return False
+
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -578,20 +612,39 @@ with app_tab:
     # Pipeline execution
     # -------------------------------------------------------------------
     if selected_question:
-        # Run the agentic pipeline
-        with st.spinner("Running agentic pipeline..."):
-            result = run_query(selected_question)
+        if not is_in_scope(selected_question):
+            # Friendly, scoped response for off-topic or greeting inputs
+            result = {
+                "user_question": selected_question,
+                "final_answer": (
+                    "Hello! I'm **PolicyLens**, a legal and policy analysis assistant "
+                    "focused on **African data protection laws** and related governance "
+                    "frameworks (e.g., the AU Malabo Convention, national data protection "
+                    "acts, health-data governance, cross-border data sharing, and continental "
+                    "policy strategies).\n\n"
+                    "Ask me a question in that area and I'll run the full agentic research pipeline for you."
+                ),
+                "process_log": ["⚠️ Question is outside PolicyLens scope — no agentic pipeline run"],
+                "sub_questions": [],
+                "follow_up_questions": []
+            }
+            st.session_state.last_result = result
+            render_result(result)
+        else:
+            # Run the agentic pipeline
+            with st.spinner("Running agentic pipeline..."):
+                result = run_query(selected_question)
 
-        # Persist the completed session to disk and to session state
-        save_session(selected_question, result)
-        st.session_state.last_result = result
+            # Persist the completed session to disk and to session state
+            save_session(selected_question, result)
+            st.session_state.last_result = result
 
-        # Render the result immediately so the user sees the answer even if
-        # the st.rerun() below loses transient state.
-        render_result(result)
+            # Render the result immediately so the user sees the answer even if
+            # the st.rerun() below loses transient state.
+            render_result(result)
 
-        # Rerun so the follow-up suggestions are refreshed from the new result.
-        st.rerun()
+            # Rerun so the follow-up suggestions are refreshed from the new result.
+            st.rerun()
 
     # -------------------------------------------------------------------
     # Render the last result (when no new question is selected)
