@@ -96,6 +96,17 @@ def plan_node(state: dict) -> dict:
 
     sub_questions = plan.get("sub_questions", [])
 
+    # Fallback: if the planner returns no sub-questions, create a single broad one
+    if not sub_questions:
+        _log("  WARNING: Planner returned no sub-questions — falling back to broad search.")
+        sub_questions = [
+            {
+                "question": user_question,
+                "target_country": "all",
+                "priority": 1
+            }
+        ]
+
     _log(f"\n  Reasoning: {plan.get('reasoning', 'N/A')}")
     _log(f"  Identified {len(sub_questions)} sub-question(s):")
     for i, sq in enumerate(sub_questions, 1):
@@ -128,10 +139,22 @@ def retrieve_node(state: dict) -> dict:
     Updates: retrieved_chunks (adds to existing), current_query, process_log
     """
     idx = state["current_sub_question_index"]
-    sq = state["sub_questions"][idx]
+    sub_questions = state.get("sub_questions", [])
+
+    # Guard against empty sub-question list (should be handled by plan_node fallback,
+    # but defensively skip retrieval if it happens).
+    if not sub_questions or idx >= len(sub_questions):
+        _log(f"\n[STAGE 2 — RETRIEVER] No sub-question available at index {idx}. Skipping retrieval.")
+        return {
+            "retrieved_chunks": state.get("retrieved_chunks", {}),
+            "current_query": "",
+            "process_log": state.get("process_log", []) + ["⚠️ **No sub-question available** — skipping retrieval"]
+        }
+
+    sq = sub_questions[idx]
     query = state.get("current_query", sq["question"])
     target_country = sq["target_country"]
-    total = len(state["sub_questions"])
+    total = len(sub_questions)
 
     _log(f"\n[STAGE 2 — Sub-question {idx+1}/{total}] RETRIEVER")
     _log(f"  Country filter : {target_country}")
