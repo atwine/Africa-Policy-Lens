@@ -57,6 +57,86 @@ def load_sessions() -> list[dict]:
     return sessions
 
 
+def _render_log(lines: list, placeholder):
+    """Re-renders the log box with all lines collected so far."""
+    formatted = []
+    for line in lines:
+        # Apply colour classes based on content
+        if line.startswith("📋"):
+            formatted.append(f'<span class="log-stage">{line}</span>')
+        elif line.startswith("🔍"):
+            formatted.append(f'<span class="log-search">{line}</span>')
+        elif line.startswith("✅"):
+            formatted.append(f'<span class="log-ok">{line}</span>')
+        elif line.startswith("⚠️"):
+            formatted.append(f'<span class="log-warn">{line}</span>')
+        elif line.startswith("🔄"):
+            formatted.append(f'<span class="log-rewrite">{line}</span>')
+        elif line.startswith("📝"):
+            formatted.append(f'<span class="log-synth">{line}</span>')
+        else:
+            formatted.append(line)
+    html = "<br>".join(formatted)
+    placeholder.markdown(
+        f'<div class="log-box">{html}</div>',
+        unsafe_allow_html=True
+    )
+
+
+def render_result(result: dict):
+    """Renders a complete result card: question banner, analysis, and agent log."""
+    st.markdown(
+        f'<div class="question-banner">📌 {result.get("user_question", "")}</div>',
+        unsafe_allow_html=True
+    )
+
+    # Analysis panel (top, expanded by default)
+    with st.expander("📊 Analysis", expanded=True):
+        st.markdown('<div class="section-header">Analysis</div>', unsafe_allow_html=True)
+        answer = result.get("final_answer", "No answer was generated.")
+
+        # Split disclaimer from the main answer for separate rendering
+        if "\n\n---\n" in answer:
+            main_answer, disclaimer = answer.rsplit("\n\n---\n", 1)
+        else:
+            main_answer, disclaimer = answer, ""
+
+        # Convert the LLM's markdown to HTML, then inject it inside the styled card div.
+        answer_html = md.markdown(main_answer, extensions=["nl2br", "tables"])
+        st.markdown(
+            f'<div class="answer-card">{answer_html}</div>',
+            unsafe_allow_html=True
+        )
+
+        if disclaimer:
+            st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
+
+        # Download button
+        st.download_button(
+            label="⬇️  Download analysis as .txt",
+            data=answer,
+            file_name="policylens_analysis.txt",
+            mime="text/plain",
+            width="stretch"
+        )
+
+    # Agent Activity Log panel (bottom, collapsed by default)
+    with st.expander("🤖 Agent Activity Log", expanded=False):
+        st.markdown('<div class="section-header">Agent Activity Log</div>', unsafe_allow_html=True)
+
+        log_placeholder = st.empty()
+        collected_log = result.get("process_log", [])
+        _render_log(collected_log, log_placeholder)
+
+        # Step count metrics
+        searches = sum(1 for l in collected_log if l.startswith("🔍"))
+        retries = sum(1 for l in collected_log if l.startswith("🔄"))
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Sub-questions", len(result.get("sub_questions", [])))
+        m2.metric("Searches run", searches)
+        m3.metric("Query rewrites", retries)
+
+
 # ---------------------------------------------------------------------------
 # Page configuration — must be first Streamlit call
 # ---------------------------------------------------------------------------
@@ -314,13 +394,13 @@ with st.sidebar:
 
         # ── Clear Sessions ─────────────────────────────────────────────────
         st.markdown("---")
-        if st.button("🗑️ Clear all saved sessions", use_container_width=True, type="secondary"):
+        if st.button("🗑️ Clear all saved sessions", width="stretch", type="secondary"):
             st.session_state.confirm_clear_sessions = True
 
         if st.session_state.get("confirm_clear_sessions"):
             st.warning("Delete all saved session files? This cannot be undone.")
             c1, c2 = st.columns(2)
-            if c1.button("Yes, delete", key="confirm_clear_sessions_yes", use_container_width=True):
+            if c1.button("Yes, delete", key="confirm_clear_sessions_yes", width="stretch"):
                 deleted = 0
                 for f in Path(SESSIONS_DIR).glob("*.json"):
                     f.unlink()
@@ -328,7 +408,7 @@ with st.sidebar:
                 st.session_state.confirm_clear_sessions = False
                 st.success(f"Deleted {deleted} session(s).")
                 st.rerun()
-            if c2.button("Cancel", key="confirm_clear_sessions_no", use_container_width=True):
+            if c2.button("Cancel", key="confirm_clear_sessions_no", width="stretch"):
                 st.session_state.confirm_clear_sessions = False
                 st.rerun()
 
@@ -391,7 +471,7 @@ with about_tab:
     kb_data = []
     for filename, meta in DOCUMENTS.items():
         kb_data.append({"Scope": meta["country"], "Document": meta["document_name"], "Type": meta["document_type"]})
-    st.dataframe(kb_data, use_container_width=True, hide_index=True)
+    st.dataframe(kb_data, width="stretch", hide_index=True)
 
     st.markdown("""
     <div class="about-card">
@@ -440,22 +520,20 @@ with app_tab:
         ("🏛️", "National vs AU Malabo", "Common themes & divergences with continental framework"),
     ]
 
-    # If a follow-up question was selected from a previous analysis, replay it
-    follow_up_question = st.session_state.pop("next_question", None)
+    selected_question = None
 
     col1, col2 = st.columns(2, gap="medium")
-    selected_question = follow_up_question
 
     with col1:
         for i in [0, 2]:
             emoji, label, caption = btn_labels[i]
-            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
+            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", width="stretch"):
                 selected_question = DEMO_QUESTIONS[i]
 
     with col2:
         for i in [1, 3]:
             emoji, label, caption = btn_labels[i]
-            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
+            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", width="stretch"):
                 selected_question = DEMO_QUESTIONS[i]
 
     # Custom question input
@@ -471,114 +549,52 @@ with app_tab:
         )
     )
 
-    if st.button("🚀  Ask PolicyLens", type="primary", use_container_width=True):
+    if st.button("🚀  Ask PolicyLens", type="primary", width="stretch"):
         if custom_question.strip():
             selected_question = custom_question.strip()
         else:
             st.warning("Please enter a question before clicking Ask.")
 
-    # Pipeline execution + live log display
+    # -------------------------------------------------------------------
+    # Suggested follow-up questions from the previous analysis
+    # -------------------------------------------------------------------
+    # Rendered before the pipeline so that clicking a follow-up can set
+    # selected_question in the same script execution and trigger the pipeline.
+    # -------------------------------------------------------------------
+    if not selected_question:
+        last_result = st.session_state.get("last_result")
+        if last_result:
+            follow_ups = last_result.get("follow_up_questions", [])
+            if follow_ups:
+                with st.expander("💡 Suggested Follow-up Questions", expanded=True):
+                    st.markdown('<div class="section-header">Suggested Follow-up Questions</div>', unsafe_allow_html=True)
+                    st.caption("Click any question to run it through the pipeline.")
+                    for i, q in enumerate(follow_ups, 1):
+                        if st.button(f"{i}. {q}", key=f"follow_up_{i}", width="stretch"):
+                            selected_question = q
+
+    # -------------------------------------------------------------------
+    # Pipeline execution
+    # -------------------------------------------------------------------
     if selected_question:
-
-        st.markdown(
-            f'<div class="question-banner">📌 {selected_question}</div>',
-            unsafe_allow_html=True
-        )
-
-        # Run the agentic pipeline once before rendering the UI panels
+        # Run the agentic pipeline
         with st.spinner("Running agentic pipeline..."):
             result = run_query(selected_question)
 
-        # Persist the completed session to disk
+        # Persist the completed session to disk and to session state
         save_session(selected_question, result)
+        st.session_state.last_result = result
 
-        # Helper to render the log box inside the collapsible log section
-        def render_log(lines: list, placeholder):
-            """Re-renders the log box with all lines collected so far."""
-            formatted = []
-            for line in lines:
-                # Apply colour classes based on content
-                if line.startswith("📋"):
-                    formatted.append(f'<span class="log-stage">{line}</span>')
-                elif line.startswith("🔍"):
-                    formatted.append(f'<span class="log-search">{line}</span>')
-                elif line.startswith("✅"):
-                    formatted.append(f'<span class="log-ok">{line}</span>')
-                elif line.startswith("⚠️"):
-                    formatted.append(f'<span class="log-warn">{line}</span>')
-                elif line.startswith("🔄"):
-                    formatted.append(f'<span class="log-rewrite">{line}</span>')
-                elif line.startswith("📝"):
-                    formatted.append(f'<span class="log-synth">{line}</span>')
-                else:
-                    formatted.append(line)
-            html = "<br>".join(formatted)
-            placeholder.markdown(
-                f'<div class="log-box">{html}</div>',
-                unsafe_allow_html=True
-            )
+        # Render the result immediately so the user sees the answer even if
+        # the st.rerun() below loses transient state.
+        render_result(result)
 
-        # -------------------------------------------------------------------
-        # Analysis panel (top, expanded by default)
-        # -------------------------------------------------------------------
-        with st.expander("📊 Analysis", expanded=True):
-            st.markdown('<div class="section-header">Analysis</div>', unsafe_allow_html=True)
-            answer = result.get("final_answer", "No answer was generated.")
+        # Rerun so the follow-up suggestions are refreshed from the new result.
+        st.rerun()
 
-            # Split disclaimer from the main answer for separate rendering
-            if "\n\n---\n" in answer:
-                main_answer, disclaimer = answer.rsplit("\n\n---\n", 1)
-            else:
-                main_answer, disclaimer = answer, ""
-
-            # Convert the LLM's markdown to HTML, then inject it inside the styled card div.
-            # Splitting the open/close tags across separate st.markdown() calls does NOT work
-            # because each call is its own DOM element — Streamlit never merges them.
-            answer_html = md.markdown(main_answer, extensions=["nl2br", "tables"])
-            st.markdown(
-                f'<div class="answer-card">{answer_html}</div>',
-                unsafe_allow_html=True
-            )
-
-            if disclaimer:
-                st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
-
-            # Download button
-            st.download_button(
-                label="⬇️  Download analysis as .txt",
-                data=answer,
-                file_name="policylens_analysis.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-
-        # -------------------------------------------------------------------
-        # Follow-up questions panel
-        # -------------------------------------------------------------------
-        follow_ups = result.get("follow_up_questions", [])
-        if follow_ups:
-            with st.expander("💡 Suggested Follow-up Questions", expanded=True):
-                st.markdown('<div class="section-header">Suggested Follow-up Questions</div>', unsafe_allow_html=True)
-                st.caption("Click any question to run it through the pipeline.")
-                for i, q in enumerate(follow_ups, 1):
-                    if st.button(f"{i}. {q}", key=f"follow_up_{i}", use_container_width=True):
-                        st.session_state.next_question = q
-                        st.rerun()
-
-        # -------------------------------------------------------------------
-        # Agent Activity Log panel (bottom, collapsed by default)
-        # -------------------------------------------------------------------
-        with st.expander("🤖 Agent Activity Log", expanded=False):
-            st.markdown('<div class="section-header">Agent Activity Log</div>', unsafe_allow_html=True)
-
-            log_placeholder = st.empty()
-            collected_log = result.get("process_log", [])
-            render_log(collected_log, log_placeholder)
-
-            # Step count metrics
-            searches = sum(1 for l in collected_log if l.startswith("🔍"))
-            retries  = sum(1 for l in collected_log if l.startswith("🔄"))
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Sub-questions", len(result.get("sub_questions", [])))
-            m2.metric("Searches run", searches)
-            m3.metric("Query rewrites", retries)
+    # -------------------------------------------------------------------
+    # Render the last result (when no new question is selected)
+    # -------------------------------------------------------------------
+    last_result = st.session_state.get("last_result")
+    if last_result:
+        render_result(last_result)

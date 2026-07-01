@@ -41,12 +41,14 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Knowledge base size** — expanded from 7 documents / 583 chunks to 17 documents / 1,450 chunks (`config.py`, `README.md`)
 - **Sidebar stack info** — updated to reflect vLLM on ACE HPC A100 instead of local Ollama (`app.py`, `README.md`)
 - **README refresh** — badges, tech stack, setup instructions, hardware notes, project structure, and limitations updated to match the vLLM/A100 setup and two-tab UI (`README.md`)
+- **Repository cleanup** — removed download logs, auto-downloaded future/reference PDFs, root `__pycache__`, and a duplicate AU STISA PDF; renamed `docs/New Docs July 1 2026/` to `docs/policy_governance/`; updated `.gitignore` accordingly
 
 ### Fixed
 
 - **White text on white background** in the About tab and analysis card — added explicit `color: #1e293b` to `.answer-card` and `.about-card` CSS rules (`app.py`)
 - **Broken emoji rendering** in sidebar country list and log search indicator (`app.py`)
 - **Sidebar policy/governance section** — added the new AU strategy documents to the sidebar knowledge base list (`app.py`)
+- **Follow-up questions not re-running the pipeline** — clicking a suggested follow-up reset the UI to the default state because the follow-up button was rendered after the pipeline block and relied on `st.rerun()` to pass the question back to the top. Restructured the PolicyLens tab so follow-up buttons are rendered before the pipeline, set `selected_question` directly in the same execution, and the result is persisted to `st.session_state.last_result`. Also replaced deprecated `use_container_width` with `width` across all buttons.
 
 ---
 
