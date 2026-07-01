@@ -146,21 +146,9 @@ def build_graph():
 # ---------------------------------------------------------------------------
 # Convenience function for running a query
 # ---------------------------------------------------------------------------
-def run_query(question: str) -> dict:
-    """
-    Runs a question through the full agentic RAG pipeline.
-
-    Args:
-        question: The user's natural language question
-
-    Returns:
-        The final state dict containing:
-        - final_answer: The synthesized response
-        - process_log: List of log messages for UI display
-        - All intermediate state
-    """
-    graph = build_graph()
-    initial_state = {
+def _initial_state(question: str) -> dict:
+    """Returns a fresh initial state for the given question."""
+    return {
         "user_question": question,
         "plan": {},
         "sub_questions": [],
@@ -175,5 +163,36 @@ def run_query(question: str) -> dict:
         "process_log": []
     }
 
-    final_state = graph.invoke(initial_state)
+
+def run_query(question: str) -> dict:
+    """
+    Runs a question through the full agentic RAG pipeline.
+
+    Args:
+        question: The user's natural language question
+
+    Returns:
+        The final state dict containing:
+        - final_answer: The synthesized response
+        - process_log: List of log messages for UI display
+        - All intermediate state
+    """
+    graph = build_graph()
+    final_state = graph.invoke(_initial_state(question))
     return final_state
+
+
+def run_query_streaming(question: str):
+    """
+    Streams the pipeline step-by-step, yielding (node_name, state_update)
+    after each node completes. The caller can use the node_name to drive
+    a live progress indicator in the UI.
+
+    Yields:
+        Tuples of (node_name: str, state_update: dict) for each executed node.
+    """
+    graph = build_graph()
+    for chunk in graph.stream(_initial_state(question)):
+        # Each chunk is {node_name: {updated_fields...}}
+        for node_name, state_update in chunk.items():
+            yield node_name, state_update

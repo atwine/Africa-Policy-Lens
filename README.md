@@ -312,7 +312,7 @@ Four buttons aligned with the ABI demo priorities:
 
 ### Custom Questions
 
-Type any question in the text box and click **Ask PolicyLens**. Questions that reference scopes outside the knowledge base trigger a broad search across all available documents.
+Type any question in the text box and click **Ask PolicyLens** (or press **Ctrl+Enter**). Questions that reference scopes outside the knowledge base trigger a broad search across all available documents.
 
 ### Follow-up Questions
 After each analysis, PolicyLens generates 3–5 logical follow-up questions (causal, comparative, gap, or implementation angles). Click any suggestion to run it through the pipeline and see the new answer.
@@ -322,10 +322,14 @@ After each analysis, PolicyLens generates 3–5 logical follow-up questions (cau
 A collapsible panel below the analysis shows exactly what the agents did:
 
 - 📋 Planning step — sub-questions and reasoning
-- 🔍 Each ChromaDB search with passage count
+- 🔍 Each ChromaDB search with passage count and relevance scores
 - ✅ / ⚠️ Evaluator verdict per sub-question
 - 🔄 Query rewrites (when triggered)
 - 📝 Synthesis step
+
+### Live Progress
+
+While the pipeline runs (30–90 seconds), a status widget shows real-time updates as each stage completes — planning, retrieving per country, evaluating sufficiency, rewriting queries, synthesizing, and generating follow-ups.
 
 ### Metrics Bar
 
@@ -333,7 +337,7 @@ Below the log: number of sub-questions generated, total searches run, and query 
 
 ### Download
 
-The analysis panel includes a **Download analysis as .txt** button for saving answers.
+The analysis panel includes a **Download analysis as .md** button for saving answers with Markdown formatting preserved.
 
 ---
 
@@ -447,7 +451,7 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 ![planned](https://img.shields.io/badge/Status-Post--MVP%20Planning-8b5cf6?style=flat-square)
 
 - [ ] Add more African countries as text-based PDFs become available (Rwanda, Tanzania, Ghana)
-- [ ] Streaming log updates within Streamlit using `graph.stream()`
+- [x] Streaming progress updates within Streamlit using `graph.stream()` (v0.1.4)
 - [ ] Side-by-side clause comparison view
 - [ ] Citation linking — click a citation to open the source PDF at that page
 - [ ] Hugging Face Spaces deployment for remote CoP access

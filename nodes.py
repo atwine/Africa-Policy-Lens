@@ -185,9 +185,15 @@ def retrieve_node(state: dict) -> dict:
         retrieved[str(idx)] = context
 
     short_query = query[:70] + "..." if len(query) > 70 else query
+    # Include relevance score range for transparency
+    if results:
+        scores = [score for _, score in results]
+        score_info = f" (best: {max(scores):.2f}, worst: {min(scores):.2f})"
+    else:
+        score_info = ""
     log_entry = (
         f"🔍 **Searching `{target_country}`** — *\"{short_query}\"*\n"
-        f"  → Retrieved **{len(results)} passages**"
+        f"  → Retrieved **{len(results)} passages**{score_info}"
     )
 
     return {

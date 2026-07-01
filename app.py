@@ -19,7 +19,7 @@ from pathlib import Path
 from datetime import datetime
 import markdown as md  # converts LLM markdown text -> HTML for safe injection
 import streamlit as st
-from graph import run_query
+from graph import run_query_streaming
 from config import DEMO_QUESTIONS, DOCUMENTS
 
 # Directory where completed sessions are persisted
@@ -87,8 +87,20 @@ def _render_log(lines: list, placeholder):
 
 def render_result(result: dict):
     """Renders a complete result card: question banner, analysis, and agent log."""
+    # Build scope badges from the sub-questions identified by the planner
+    sub_qs = result.get("sub_questions", [])
+    scopes = []
+    seen_scopes = set()
+    for sq in sub_qs:
+        scope = sq.get("target_country", "")
+        if scope and scope not in seen_scopes:
+            scopes.append(scope)
+            seen_scopes.add(scope)
+    badges_html = "".join(f'<span class="sidebar-badge">{s}</span>' for s in scopes)
+    badge_row = f'<div style="margin-top:0.4rem;">{badges_html}</div>' if badges_html else ""
+
     st.markdown(
-        f'<div class="question-banner">📌 {result.get("user_question", "")}</div>',
+        f'<div class="question-banner">📌 {result.get("user_question", "")}{badge_row}</div>',
         unsafe_allow_html=True
     )
 
@@ -115,10 +127,10 @@ def render_result(result: dict):
 
         # Download button
         st.download_button(
-            label="⬇️  Download analysis as .txt",
+            label="⬇️  Download analysis as .md",
             data=answer,
-            file_name="policylens_analysis.txt",
-            mime="text/plain",
+            file_name="policylens_analysis.md",
+            mime="text/markdown",
             width="stretch"
         )
 
@@ -203,6 +215,16 @@ html, body, [class*="css"] {
 }
 .hero h1 { font-size: 2.4rem; margin: 0 0 0.3rem 0; font-weight: 700; }
 .hero p  { font-size: 1.05rem; margin: 0; opacity: 0.85; }
+
+/* Compact header for PolicyLens tab */
+.app-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    border-radius: 8px;
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1rem;
+    color: white;
+    font-size: 1rem;
+}
 
 /* Section headers */
 .section-header {
@@ -320,6 +342,17 @@ div.stButton > button[kind="primary"]:hover {
     color: #1e293b;
 }
 
+/* Empty state placeholder */
+.empty-state {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.95rem;
+    padding: 3rem 1rem;
+    border: 1.5px dashed #e2e8f0;
+    border-radius: 12px;
+    margin-top: 1rem;
+}
+
 /* Sidebar styling */
 .sidebar-badge {
     display: inline-block;
@@ -373,11 +406,12 @@ with st.sidebar:
         "🔬 Wellcome PGS Data Sharing Report": "2025",
         "🧬 Thaldar et al. — Genomics Data Sharing": "Human Genomics, 2025",
     }
-    for flag_country, law in countries.items():
-        st.markdown(f"**{flag_country}**  \n*{law}*")
-    st.markdown("<div class='sidebar-section'>Policy & Governance</div>", unsafe_allow_html=True)
-    for doc, year in policy_docs.items():
-        st.markdown(f"**{doc}**  \n*{year}*")
+    with st.expander(f"Binding Laws ({len(countries)})", expanded=False):
+        for flag_country, law in countries.items():
+            st.markdown(f"**{flag_country}**  \n*{law}*")
+    with st.expander(f"Policy & Governance ({len(policy_docs)})", expanded=False):
+        for doc, year in policy_docs.items():
+            st.markdown(f"**{doc}**  \n*{year}*")
 
     st.markdown("---")
     st.markdown('<div class="sidebar-section">Pipeline</div>', unsafe_allow_html=True)
@@ -412,7 +446,8 @@ with st.sidebar:
         for s in past[:10]:  # Show the 10 most recent
             ts_label = s.get("timestamp", "")[:16].replace("T", " ")
             q_short   = s.get("question", "")[:55] + ("…" if len(s.get("question", "")) > 55 else "")
-            with st.expander(f"🕐 {ts_label}  —  {q_short}"):
+            word_count = len(s.get("final_answer", "").split())
+            with st.expander(f"🕐 {ts_label}  —  {q_short} ({word_count} words)"):
                 st.markdown(f"**Q:** {s['question']}")
                 st.markdown("**Answer:**")
                 # Show only the main answer (before disclaimer separator)
@@ -422,8 +457,8 @@ with st.sidebar:
                 st.download_button(
                     label="⬇️ Download",
                     data=s.get("final_answer", ""),
-                    file_name=f"policylens_{ts_label.replace(' ', '_')}.txt",
-                    mime="text/plain",
+                    file_name=f"policylens_{ts_label.replace(' ', '_')}.md",
+                    mime="text/markdown",
                     key=f"dl_{s.get('timestamp','')}",
                 )
 
@@ -537,12 +572,11 @@ with about_tab:
 # POLICYLENS TAB
 # ---------------------------------------------------------------------------
 with app_tab:
-    st.markdown("""
-    <div class="hero">
-      <h1>⚖️ PolicyLens</h1>
-      <p>Ask complex multi-jurisdiction questions and get formally cited answers.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Compact header — keeps interactive controls above the fold
+    st.markdown(
+        '<div class="app-header">⚖️ <strong>PolicyLens</strong> · Ask complex multi-jurisdiction questions and get formally cited answers.</div>',
+        unsafe_allow_html=True
+    )
 
     # Preset question buttons
     st.markdown('<div class="section-header">Preset Demo Questions</div>', unsafe_allow_html=True)
@@ -584,7 +618,7 @@ with app_tab:
         )
     )
 
-    if st.button("🚀  Ask PolicyLens", type="primary", width="stretch"):
+    if st.button("🚀  Ask PolicyLens", type="primary", width="stretch", shortcut="Ctrl+Enter"):
         if custom_question.strip():
             selected_question = custom_question.strip()
         else:
@@ -602,10 +636,9 @@ with app_tab:
             follow_ups = last_result.get("follow_up_questions", [])
             if follow_ups:
                 with st.expander("💡 Suggested Follow-up Questions", expanded=True):
-                    st.markdown('<div class="section-header">Suggested Follow-up Questions</div>', unsafe_allow_html=True)
-                    st.caption("Click any question to run it through the pipeline.")
+                    st.caption("Click any suggestion to explore further.")
                     for i, q in enumerate(follow_ups, 1):
-                        if st.button(f"{i}. {q}", key=f"follow_up_{i}", width="stretch"):
+                        if st.button(f"→ {q}", key=f"follow_up_{i}", width="stretch", type="tertiary"):
                             selected_question = q
 
     # -------------------------------------------------------------------
@@ -631,16 +664,72 @@ with app_tab:
             st.session_state.last_result = result
             render_result(result)
         else:
-            # Run the agentic pipeline
+            # Run the agentic pipeline with live progress indicator
+            # Node name → human-readable label for the status widget
+            _STAGE_LABELS = {
+                "plan":       "Planning sub-questions...",
+                "retrieve":   "Searching knowledge base...",
+                "evaluate":   "Evaluating retrieved context...",
+                "rewrite":    "Rewriting query with legal synonyms...",
+                "advance":    "Moving to next sub-question...",
+                "synthesize": "Synthesizing final answer...",
+                "follow_up":  "Generating follow-up questions...",
+            }
+
+            pipeline_error = None
+            result = {
+                "user_question": selected_question,
+                "plan": {},
+                "sub_questions": [],
+                "current_sub_question_index": 0,
+                "retrieved_chunks": {},
+                "final_answer": "",
+                "follow_up_questions": [],
+                "process_log": [],
+            }
+
             try:
-                with st.spinner("Running agentic pipeline..."):
-                    result = run_query(selected_question)
+                with st.status("Running agentic pipeline...", expanded=True) as status:
+                    for node_name, state_update in run_query_streaming(selected_question):
+                        # Merge each node's output into the accumulated result
+                        result.update(state_update)
+
+                        label = _STAGE_LABELS.get(node_name, node_name)
+                        status.update(label=label)
+
+                        # Show a running log of completed steps inside the status box
+                        if node_name == "plan":
+                            n_sq = len(result.get("sub_questions", []))
+                            st.write(f"Identified **{n_sq}** sub-question(s)")
+                        elif node_name == "retrieve":
+                            idx = result.get("current_sub_question_index", 0)
+                            sqs = result.get("sub_questions", [])
+                            total = len(sqs)
+                            # Safely look up the country for the current sub-question
+                            country = sqs[idx].get("target_country", "") if idx < total else ""
+                            st.write(f"Retrieved passages for **{country}** (sub-question {idx + 1}/{total})")
+                        elif node_name == "evaluate":
+                            verdict = result.get("sufficiency_status", "")
+                            icon = "✅" if verdict == "SUFFICIENT" else "⚠️"
+                            st.write(f"{icon} Context check: **{verdict}**")
+                        elif node_name == "rewrite":
+                            st.write(f"Rewrote query (attempt {result.get('retry_count', 1)})")
+                        elif node_name == "synthesize":
+                            chars = len(result.get("final_answer", ""))
+                            st.write(f"Answer generated ({chars:,} characters)")
+                        elif node_name == "follow_up":
+                            n_fup = len(result.get("follow_up_questions", []))
+                            st.write(f"Generated **{n_fup}** follow-up question(s)")
+
+                    status.update(label="Analysis complete", state="complete", expanded=False)
+
             except Exception as e:
                 # Pipeline failure (e.g. vLLM unreachable, ChromaDB missing, timeout)
+                pipeline_error = e
                 result = {
                     "user_question": selected_question,
                     "final_answer": (
-                        "⚠️ **PolicyLens could not complete the analysis.**\n\n"
+                        "**PolicyLens could not complete the analysis.**\n\n"
                         "The pipeline encountered an error while processing your question. "
                         "Common causes are:\n"
                         "- The vLLM server on ACE HPC is not reachable.\n"
@@ -648,14 +737,15 @@ with app_tab:
                         "- The ChromaDB vector store has not been built yet (run `python ingest.py`).\n\n"
                         f"Technical details: `{type(e).__name__}: {e}`"
                     ),
-                    "process_log": [f"❌ **Pipeline error:** {type(e).__name__}: {e}"],
+                    "process_log": [f"**Pipeline error:** {type(e).__name__}: {e}"],
                     "sub_questions": [],
                     "follow_up_questions": []
                 }
                 st.session_state.last_result = result
                 render_result(result)
                 # Do not call st.rerun() after an error so the user can read the message
-            else:
+
+            if pipeline_error is None:
                 # Persist the completed session to disk and to session state
                 save_session(selected_question, result)
                 st.session_state.last_result = result
@@ -673,3 +763,9 @@ with app_tab:
     last_result = st.session_state.get("last_result")
     if last_result:
         render_result(last_result)
+    elif not selected_question:
+        # Empty state — guide the user
+        st.markdown(
+            '<div class="empty-state">Select a preset question or type your own above to start the analysis.</div>',
+            unsafe_allow_html=True
+        )

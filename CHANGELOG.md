@@ -11,7 +11,6 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 > Features planned for post-MVP development. See [Roadmap](README.md#roadmap-post-mvp) in README.
 
-- Streaming agent log updates within Streamlit using `graph.stream()`
 - Additional African country documents (Rwanda, Tanzania, Ghana)
 - Side-by-side clause comparison view in the UI
 - Citation linking — click a citation to jump to the source PDF page
@@ -20,6 +19,27 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - French-language document support for Francophone African laws
 - Parallel sub-question retrieval for faster pipeline execution
 - Conversation threading — accumulate follow-up answers below previous answers and download the full thread as one file
+
+---
+
+## [0.1.4] — 2026-07-01
+
+### Added
+
+- **Live pipeline progress indicator** — replaced the static `st.spinner` with `st.status` that streams updates as each LangGraph node completes. Users see which stage is active (planning, retrieving, evaluating, rewriting, synthesizing, generating follow-ups) along with per-step details such as country name, sub-question count, sufficiency verdict, and answer length (`graph.py`, `app.py`)
+- **Streaming entry point** — new `run_query_streaming()` in `graph.py` uses `graph.stream()` to yield `(node_name, state_update)` per step; `run_query()` preserved for non-UI use
+- **Scope badge chips** — after the planner identifies countries/scopes, colored pill badges appear below the question banner for instant visual feedback (`app.py`)
+- **Empty state placeholder** — when no query has been run yet, a dashed-border guide tells users where results will appear (`app.py`)
+- **Keyboard shortcut** — Ctrl+Enter triggers the "Ask PolicyLens" button without reaching for the mouse (`app.py`)
+- **Relevance scores in agent log** — each search entry now shows best/worst passage similarity scores for transparency (`nodes.py`)
+- **Word count in past sessions** — session expanders show answer length so users can judge depth at a glance (`app.py`)
+
+### Changed
+
+- **PolicyLens tab header** — replaced the large hero gradient block with a compact single-line header to push interactive controls above the fold (`app.py`)
+- **Sidebar knowledge base** — grouped the 7 binding laws and 10 policy docs into two collapsible expanders (collapsed by default) so Pipeline, Stack, and Past Sessions are immediately visible (`app.py`)
+- **Follow-up button style** — follow-up suggestions now use `type="tertiary"` with a `→` prefix to visually distinguish them from preset demo buttons (`app.py`)
+- **Download format** — changed from `.txt` / `text/plain` to `.md` / `text/markdown` so exported analyses preserve Markdown formatting (`app.py`)
 
 ---
 
