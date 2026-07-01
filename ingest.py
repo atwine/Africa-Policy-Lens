@@ -191,7 +191,8 @@ def main():
     all_documents = []
 
     for filename, doc_meta in DOCUMENTS.items():
-        pdf_path = os.path.join("docs", filename)
+        source_dir = doc_meta.get("source_dir", "docs")
+        pdf_path = os.path.join(source_dir, filename)
 
         if not os.path.exists(pdf_path):
             print(f"\n  WARNING: {pdf_path} not found — skipping.")

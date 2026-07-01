@@ -15,7 +15,7 @@ from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END, START
 from nodes import (
     plan_node, retrieve_node, evaluate_node,
-    rewrite_node, advance_node, synthesize_node
+    rewrite_node, advance_node, synthesize_node, follow_up_node
 )
 from config import MAX_RETRIES
 
@@ -41,6 +41,9 @@ class PolicyRAGState(TypedDict):
 
     # Stage 3 output
     final_answer: str
+
+    # Stage 4 output
+    follow_up_questions: list
 
     # Process log (for Streamlit UI display)
     process_log: list
@@ -103,6 +106,7 @@ def build_graph():
     graph.add_node("rewrite", rewrite_node)
     graph.add_node("advance", advance_node)
     graph.add_node("synthesize", synthesize_node)
+    graph.add_node("follow_up", follow_up_node)
 
     # Wire the edges
     graph.add_edge(START, "plan")          # Entry point
@@ -131,7 +135,8 @@ def build_graph():
         }
     )
 
-    graph.add_edge("synthesize", END)      # Synthesize → done
+    graph.add_edge("synthesize", "follow_up")  # Synthesize → follow-up generator
+    graph.add_edge("follow_up", END)          # Follow-up → done
 
     # Compile the graph
     compiled = graph.compile()
@@ -166,6 +171,7 @@ def run_query(question: str) -> dict:
         "retry_count": 0,
         "sufficiency_status": "",
         "final_answer": "",
+        "follow_up_questions": [],
         "process_log": []
     }
 

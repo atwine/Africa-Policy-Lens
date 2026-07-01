@@ -11,6 +11,7 @@ Rules:
    - For COMPARISON questions: Present each country's position, then highlight alignments and conflicts.
    - For COMPLIANCE questions: List specific requirements from each jurisdiction in a structured format.
    - For GAP ANALYSIS questions: Identify what is covered by each framework and what is missing.
+   - For POLICY GAPS / PRACTICAL OPPORTUNITIES questions: Identify the gap between the current state and the target framework, then propose concrete, actionable implementation steps grounded in the retrieved documents.
 6. Use formal, precise language appropriate for a policy audience.
 7. Keep the answer focused and structured — use headers to organise sections when comparing multiple countries.
 8. End with a brief summary of key takeaways.

@@ -4,11 +4,9 @@ app.py
 PolicyLens — Streamlit Frontend.
 
 Provides:
-- Sidebar with system info and country coverage
-- 4 preset demo question cards
-- Free-text input
-- Live streaming process log with per-step updates
-- Styled final answer with citations
+- Two-tab layout: About + PolicyLens
+- About tab: project overview, knowledge base, sample questions, how it works
+- PolicyLens tab: preset demo questions, free-text input, agent log, cited analysis
 
 Usage:
     streamlit run app.py
@@ -17,10 +15,10 @@ Usage:
 import json
 import os
 from datetime import datetime
-import markdown as md  # converts LLM markdown text → HTML for safe injection
+import markdown as md  # converts LLM markdown text -> HTML for safe injection
 import streamlit as st
 from graph import run_query
-from config import DEMO_QUESTIONS
+from config import DEMO_QUESTIONS, DOCUMENTS
 
 # Directory where completed sessions are persisted
 SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "sessions")
@@ -75,12 +73,12 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-/* ── Global font & background ─────────────────────────────────── */
+/* Global font & background */
 html, body, [class*="css"] {
     font-family: 'Segoe UI', sans-serif;
 }
 
-/* ── Hero header ──────────────────────────────────────────────── */
+/* Hero header */
 .hero {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     border-radius: 12px;
@@ -91,7 +89,7 @@ html, body, [class*="css"] {
 .hero h1 { font-size: 2.4rem; margin: 0 0 0.3rem 0; font-weight: 700; }
 .hero p  { font-size: 1.05rem; margin: 0; opacity: 0.85; }
 
-/* ── Section headers ──────────────────────────────────────────── */
+/* Section headers */
 .section-header {
     font-size: 0.75rem;
     font-weight: 700;
@@ -101,7 +99,7 @@ html, body, [class*="css"] {
     margin: 1.5rem 0 0.6rem 0;
 }
 
-/* ── Preset question buttons ──────────────────────────────────── */
+/* Preset question buttons */
 div.stButton > button {
     background: #ffffff;
     border: 1.5px solid #e2e8f0;
@@ -122,7 +120,7 @@ div.stButton > button:hover {
     box-shadow: 0 2px 8px rgba(59,130,246,0.15);
 }
 
-/* ── Ask button (primary) ─────────────────────────────────────── */
+/* Ask button (primary) */
 div.stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #1d4ed8, #3b82f6);
     color: white;
@@ -136,7 +134,7 @@ div.stButton > button[kind="primary"]:hover {
     box-shadow: 0 4px 12px rgba(59,130,246,0.4);
 }
 
-/* ── Active question banner ───────────────────────────────────── */
+/* Active question banner */
 .question-banner {
     background: #eff6ff;
     border-left: 4px solid #3b82f6;
@@ -148,7 +146,7 @@ div.stButton > button[kind="primary"]:hover {
     font-style: italic;
 }
 
-/* ── Process log box ──────────────────────────────────────────── */
+/* Process log box */
 .log-box {
     background: #0f172a;
     border-radius: 10px;
@@ -166,7 +164,7 @@ div.stButton > button[kind="primary"]:hover {
 .log-rewrite{ color: #fb923c; }
 .log-synth  { color: #f472b6; }
 
-/* ── Answer card ──────────────────────────────────────────────── */
+/* Answer card */
 .answer-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -174,9 +172,40 @@ div.stButton > button[kind="primary"]:hover {
     padding: 1.8rem 2rem;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     margin-top: 0.5rem;
+    color: #1e293b;
+}
+.answer-card h1, .answer-card h2, .answer-card h3, .answer-card h4 {
+    color: #0f172a;
+}
+.answer-card p, .answer-card li, .answer-card td, .answer-card th {
+    color: #1e293b;
+}
+.answer-card code {
+    color: #0f172a;
+    background: #f1f5f9;
 }
 
-/* ── Sidebar styling ──────────────────────────────────────────── */
+/* About tab cards */
+.about-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem 1.8rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+    margin-bottom: 1rem;
+}
+.about-card h3 {
+    margin-top: 0;
+    color: #0f172a;
+}
+.about-card {
+    color: #1e293b;
+}
+.about-card p, .about-card li {
+    color: #1e293b;
+}
+
+/* Sidebar styling */
 .sidebar-badge {
     display: inline-block;
     background: #dbeafe;
@@ -213,12 +242,27 @@ with st.sidebar:
         "🇰🇪 Kenya": "Data Protection Act, 2019",
         "🇳🇬 Nigeria": "NDPA, 2023",
         "🇧🇼 Botswana": "Data Protection Act, 2018",
-        "�🇿 Eswatini": "Data Protection Act, 2022",
+        "🇸🇿 Eswatini": "Data Protection Act, 2022",
         "🇿🇼 Zimbabwe": "Data Protection Act, 2021",
-        "�🌍 African Union": "Malabo Convention, 2014",
+        "🌍 African Union": "Malabo Convention, 2014",
+    }
+    policy_docs = {
+        "📘 AU Digital Transformation Strategy": "2020-2030",
+        "🤖 AU Continental AI Strategy": "July 2024",
+        "🔬 AU STISA 2034": "2025-2034",
+        "📊 AU Data Policy Framework": "2022",
+        "🇪🇺🇿🇦 EU-Africa PerMed": "Policy Brief, 2025",
+        "🌐 OECD Health Data Secondary Use": "June 2025",
+        "🧬 Pathogen Data Network Publishing Policy": "Version 2, 2025",
+        "📄 SADC Cyber-Infrastructure Framework": "2016",
+        "🔬 Wellcome PGS Data Sharing Report": "2025",
+        "🧬 Thaldar et al. — Genomics Data Sharing": "Human Genomics, 2025",
     }
     for flag_country, law in countries.items():
         st.markdown(f"**{flag_country}**  \n*{law}*")
+    st.markdown("<div class='sidebar-section'>Policy & Governance</div>", unsafe_allow_html=True)
+    for doc, year in policy_docs.items():
+        st.markdown(f"**{doc}**  \n*{year}*")
 
     st.markdown("---")
     st.markdown('<div class="sidebar-section">Pipeline</div>', unsafe_allow_html=True)
@@ -233,10 +277,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown('<div class="sidebar-section">Stack</div>', unsafe_allow_html=True)
     st.markdown("""
-- **LLM:** Llama 3.1 8B (Ollama)
-- **Embeddings:** nomic-embed-text
+- **LLM:** Llama 3.3 70B Instruct AWQ via vLLM on **ACE HPC** (A100 80GB)
+- **Embeddings:** nomic-embed-text (Ollama, local)
 - **Vector DB:** ChromaDB (local)
 - **Orchestration:** LangGraph
+- **Frontend:** Streamlit
 """)
 
     st.markdown("---")
@@ -267,99 +312,195 @@ with st.sidebar:
                     key=f"dl_{s.get('timestamp','')}",
                 )
 
+        # ── Clear Sessions ─────────────────────────────────────────────────
+        st.markdown("---")
+        if st.button("🗑️ Clear all saved sessions", use_container_width=True, type="secondary"):
+            st.session_state.confirm_clear_sessions = True
 
-# ---------------------------------------------------------------------------
-# Hero header
-# ---------------------------------------------------------------------------
-st.markdown("""
-<div class="hero">
-  <h1>⚖️ PolicyLens</h1>
-  <p>Agentic RAG for cross-country African data protection law analysis —
-     ask complex multi-jurisdiction questions and get formally cited answers.</p>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Preset question buttons
-# ---------------------------------------------------------------------------
-st.markdown('<div class="section-header">Preset Demo Questions</div>', unsafe_allow_html=True)
-st.caption("Click any question below to run it through the full agentic pipeline.")
-
-btn_labels = [
-    ("🔀", "Compare SA & Kenya", "Data sharing alignment & conflicts for research"),
-    ("🏥", "Health data: Nigeria, Eswatini & Zimbabwe", "Safeguards for cross-border health data"),
-    ("🌍", "Eswatini & Zimbabwe vs AU Malabo", "Cross-border transfer rules vs continental framework"),
-    ("🏛️", "All 7 jurisdictions", "Data subject rights & consent across the full knowledge base"),
-]
-
-col1, col2 = st.columns(2, gap="medium")
-selected_question = None
-
-with col1:
-    for i in [0, 2]:
-        emoji, label, caption = btn_labels[i]
-        if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
-            selected_question = DEMO_QUESTIONS[i]
-
-with col2:
-    for i in [1, 3]:
-        emoji, label, caption = btn_labels[i]
-        if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
-            selected_question = DEMO_QUESTIONS[i]
+        if st.session_state.get("confirm_clear_sessions"):
+            st.warning("Delete all saved session files? This cannot be undone.")
+            c1, c2 = st.columns(2)
+            if c1.button("Yes, delete", key="confirm_clear_sessions_yes", use_container_width=True):
+                deleted = 0
+                for f in Path(SESSIONS_DIR).glob("*.json"):
+                    f.unlink()
+                    deleted += 1
+                st.session_state.confirm_clear_sessions = False
+                st.success(f"Deleted {deleted} session(s).")
+                st.rerun()
+            if c2.button("Cancel", key="confirm_clear_sessions_no", use_container_width=True):
+                st.session_state.confirm_clear_sessions = False
+                st.rerun()
 
 
 # ---------------------------------------------------------------------------
-# Custom question input
+# Main tabs: About + PolicyLens
 # ---------------------------------------------------------------------------
-st.markdown('<div class="section-header">Ask Your Own Question</div>', unsafe_allow_html=True)
+about_tab, app_tab = st.tabs(["ℹ️ About", "⚖️ PolicyLens"])
 
-custom_question = st.text_area(
-    label="custom_q",
-    label_visibility="collapsed",
-    height=90,
-    placeholder=(
-        "e.g., What are the consent requirements for processing health data "
-        "across Nigeria and Kenya, and how do they compare to the Malabo Convention?"
+
+# ---------------------------------------------------------------------------
+# ABOUT TAB
+# ---------------------------------------------------------------------------
+with about_tab:
+    st.markdown("""
+    <div class="hero">
+      <h1>⚖️ PolicyLens</h1>
+      <p>Agentic RAG for cross-country African data protection law and policy analysis.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="about-card">
+      <h3>What is PolicyLens?</h3>
+      <p>
+        PolicyLens is a locally-run <strong>agentic RAG (Retrieval-Augmented Generation)</strong> tool
+        designed to answer complex, multi-jurisdiction questions about African data protection laws
+        and related policy/governance frameworks.
+      </p>
+      <p>
+        Unlike standard RAG (one search → one answer), PolicyLens uses a three-stage pipeline:
+        it <strong>plans</strong> sub-questions per country or policy scope, <strong>retrieves</strong> and
+        <strong>evaluates</strong> legal passages iteratively, and then <strong>synthesizes</strong> a formal,
+        cited answer.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="about-card">
+      <h3>How it works</h3>
+      <ol>
+        <li><strong>Planner</strong> — breaks your question into targeted sub-questions, one per country or policy scope.</li>
+        <li><strong>Retriever + Evaluator</strong> — searches ChromaDB per scope, checks whether the retrieved passages actually answer the sub-question, and rewrites the query with legal synonyms if needed (up to 2 retries).</li>
+        <li><strong>Synthesizer</strong> — combines all retrieved context into a single, structured answer with specific section and document citations.</li>
+      </ol>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="about-card">
+      <h3>Knowledge base</h3>
+      <p>
+        The vector store contains <strong>1,450 chunks</strong> from 17 documents across binding laws,
+        continental strategies, regional frameworks, and international policy/governance guidance.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    kb_data = []
+    for filename, meta in DOCUMENTS.items():
+        kb_data.append({"Scope": meta["country"], "Document": meta["document_name"], "Type": meta["document_type"]})
+    st.dataframe(kb_data, use_container_width=True, hide_index=True)
+
+    st.markdown("""
+    <div class="about-card">
+      <h3>Sample questions</h3>
+      <p>Click any of these preset questions in the <strong>PolicyLens</strong> tab to run them through the full pipeline:</p>
+      <ol>
+    """, unsafe_allow_html=True)
+    for q in DEMO_QUESTIONS:
+        st.markdown(f"<li>{q}</li>", unsafe_allow_html=True)
+    st.markdown("</ol></div>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="about-card">
+      <h3>Tech stack</h3>
+      <ul>
+        <li><strong>LLM:</strong> Llama 3.3 70B Instruct AWQ via vLLM on <strong>ACE HPC</strong> (A100 80GB)</li>
+        <li><strong>Embeddings:</strong> nomic-embed-text via Ollama (local)</li>
+        <li><strong>Vector store:</strong> ChromaDB (local persistent)</li>
+        <li><strong>Orchestration:</strong> LangGraph</li>
+        <li><strong>Frontend:</strong> Streamlit</li>
+      </ul>
+      <p><em>MVP v0.1 · Runs entirely locally · No API keys needed</em></p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
+# POLICYLENS TAB
+# ---------------------------------------------------------------------------
+with app_tab:
+    st.markdown("""
+    <div class="hero">
+      <h1>⚖️ PolicyLens</h1>
+      <p>Ask complex multi-jurisdiction questions and get formally cited answers.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Preset question buttons
+    st.markdown('<div class="section-header">Preset Demo Questions</div>', unsafe_allow_html=True)
+    st.caption("Click any question below to run it through the full agentic pipeline.")
+
+    btn_labels = [
+        ("🔀", "Compare SA & Kenya", "Data sharing alignment & conflicts for research"),
+        ("🏥", "Health data: SA & Nigeria", "Safeguards for sharing health data"),
+        ("🌍", "Multi-country gap analysis", "Legal mechanisms & gaps across SA, Kenya, Nigeria"),
+        ("🏛️", "National vs AU Malabo", "Common themes & divergences with continental framework"),
+    ]
+
+    # If a follow-up question was selected from a previous analysis, replay it
+    follow_up_question = st.session_state.pop("next_question", None)
+
+    col1, col2 = st.columns(2, gap="medium")
+    selected_question = follow_up_question
+
+    with col1:
+        for i in [0, 2]:
+            emoji, label, caption = btn_labels[i]
+            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
+                selected_question = DEMO_QUESTIONS[i]
+
+    with col2:
+        for i in [1, 3]:
+            emoji, label, caption = btn_labels[i]
+            if st.button(f"{emoji}  {label}\n{caption}", key=f"btn_{i}", use_container_width=True):
+                selected_question = DEMO_QUESTIONS[i]
+
+    # Custom question input
+    st.markdown('<div class="section-header">Ask Your Own Question</div>', unsafe_allow_html=True)
+
+    custom_question = st.text_area(
+        label="custom_q",
+        label_visibility="collapsed",
+        height=90,
+        placeholder=(
+            "e.g., What are the consent requirements for processing health data "
+            "across Nigeria and Kenya, and how do they compare to the Malabo Convention?"
+        )
     )
-)
 
-if st.button("🚀  Ask PolicyLens", type="primary", use_container_width=True):
-    if custom_question.strip():
-        selected_question = custom_question.strip()
-    else:
-        st.warning("Please enter a question before clicking Ask.")
+    if st.button("🚀  Ask PolicyLens", type="primary", use_container_width=True):
+        if custom_question.strip():
+            selected_question = custom_question.strip()
+        else:
+            st.warning("Please enter a question before clicking Ask.")
 
+    # Pipeline execution + live log display
+    if selected_question:
 
-# ---------------------------------------------------------------------------
-# Pipeline execution + live log display
-# ---------------------------------------------------------------------------
-if selected_question:
+        st.markdown(
+            f'<div class="question-banner">📌 {selected_question}</div>',
+            unsafe_allow_html=True
+        )
 
-    st.markdown(
-        f'<div class="question-banner">📌 {selected_question}</div>',
-        unsafe_allow_html=True
-    )
+        # Run the agentic pipeline once before rendering the UI panels
+        with st.spinner("Running agentic pipeline..."):
+            result = run_query(selected_question)
 
-    left_col, right_col = st.columns([1, 1], gap="large")
+        # Persist the completed session to disk
+        save_session(selected_question, result)
 
-    with left_col:
-        st.markdown('<div class="section-header">Agent Activity Log</div>', unsafe_allow_html=True)
-
-        # Placeholder that we'll update step-by-step as the graph runs
-        log_placeholder = st.empty()
-
-        # We collect log lines as they arrive by streaming state updates
-        collected_log = []
-
-        def render_log(lines: list):
+        # Helper to render the log box inside the collapsible log section
+        def render_log(lines: list, placeholder):
             """Re-renders the log box with all lines collected so far."""
             formatted = []
             for line in lines:
                 # Apply colour classes based on content
                 if line.startswith("📋"):
                     formatted.append(f'<span class="log-stage">{line}</span>')
-                elif line.startswith("�"):
+                elif line.startswith("🔍"):
                     formatted.append(f'<span class="log-search">{line}</span>')
                 elif line.startswith("✅"):
                     formatted.append(f'<span class="log-ok">{line}</span>')
@@ -372,57 +513,72 @@ if selected_question:
                 else:
                     formatted.append(line)
             html = "<br>".join(formatted)
-            log_placeholder.markdown(
+            placeholder.markdown(
                 f'<div class="log-box">{html}</div>',
                 unsafe_allow_html=True
             )
 
-        # Show a spinner while the pipeline runs
-        with st.spinner("Running agentic pipeline..."):
-            result = run_query(selected_question)
+        # -------------------------------------------------------------------
+        # Analysis panel (top, expanded by default)
+        # -------------------------------------------------------------------
+        with st.expander("📊 Analysis", expanded=True):
+            st.markdown('<div class="section-header">Analysis</div>', unsafe_allow_html=True)
+            answer = result.get("final_answer", "No answer was generated.")
 
-        # Persist the completed session to disk
-        save_session(selected_question, result)
+            # Split disclaimer from the main answer for separate rendering
+            if "\n\n---\n" in answer:
+                main_answer, disclaimer = answer.rsplit("\n\n---\n", 1)
+            else:
+                main_answer, disclaimer = answer, ""
 
-        # Render the final complete log
-        collected_log = result.get("process_log", [])
-        render_log(collected_log)
+            # Convert the LLM's markdown to HTML, then inject it inside the styled card div.
+            # Splitting the open/close tags across separate st.markdown() calls does NOT work
+            # because each call is its own DOM element — Streamlit never merges them.
+            answer_html = md.markdown(main_answer, extensions=["nl2br", "tables"])
+            st.markdown(
+                f'<div class="answer-card">{answer_html}</div>',
+                unsafe_allow_html=True
+            )
 
-        # Step count metrics
-        searches = sum(1 for l in collected_log if l.startswith("🔍"))
-        retries  = sum(1 for l in collected_log if l.startswith("🔄"))
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Sub-questions", len(result.get("sub_questions", [])))
-        m2.metric("Searches run", searches)
-        m3.metric("Query rewrites", retries)
+            if disclaimer:
+                st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
 
-    with right_col:
-        st.markdown('<div class="section-header">Analysis</div>', unsafe_allow_html=True)
-        answer = result.get("final_answer", "No answer was generated.")
+            # Download button
+            st.download_button(
+                label="⬇️  Download analysis as .txt",
+                data=answer,
+                file_name="policylens_analysis.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
 
-        # Split disclaimer from the main answer for separate rendering
-        if "\n\n---\n" in answer:
-            main_answer, disclaimer = answer.rsplit("\n\n---\n", 1)
-        else:
-            main_answer, disclaimer = answer, ""
+        # -------------------------------------------------------------------
+        # Follow-up questions panel
+        # -------------------------------------------------------------------
+        follow_ups = result.get("follow_up_questions", [])
+        if follow_ups:
+            with st.expander("💡 Suggested Follow-up Questions", expanded=True):
+                st.markdown('<div class="section-header">Suggested Follow-up Questions</div>', unsafe_allow_html=True)
+                st.caption("Click any question to run it through the pipeline.")
+                for i, q in enumerate(follow_ups, 1):
+                    if st.button(f"{i}. {q}", key=f"follow_up_{i}", use_container_width=True):
+                        st.session_state.next_question = q
+                        st.rerun()
 
-        # Convert the LLM's markdown to HTML, then inject it inside the styled card div.
-        # Splitting the open/close tags across separate st.markdown() calls does NOT work
-        # because each call is its own DOM element — Streamlit never merges them.
-        answer_html = md.markdown(main_answer, extensions=["nl2br", "tables"])
-        st.markdown(
-            f'<div class="answer-card">{answer_html}</div>',
-            unsafe_allow_html=True
-        )
+        # -------------------------------------------------------------------
+        # Agent Activity Log panel (bottom, collapsed by default)
+        # -------------------------------------------------------------------
+        with st.expander("🤖 Agent Activity Log", expanded=False):
+            st.markdown('<div class="section-header">Agent Activity Log</div>', unsafe_allow_html=True)
 
-        if disclaimer:
-            st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
+            log_placeholder = st.empty()
+            collected_log = result.get("process_log", [])
+            render_log(collected_log, log_placeholder)
 
-        # Download button
-        st.download_button(
-            label="⬇️  Download analysis as .txt",
-            data=answer,
-            file_name="policylens_analysis.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+            # Step count metrics
+            searches = sum(1 for l in collected_log if l.startswith("🔍"))
+            retries  = sum(1 for l in collected_log if l.startswith("🔄"))
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Sub-questions", len(result.get("sub_questions", [])))
+            m2.metric("Searches run", searches)
+            m3.metric("Query rewrites", retries)

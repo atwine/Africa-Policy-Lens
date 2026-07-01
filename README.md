@@ -1,14 +1,12 @@
 # PolicyLens — African Data Protection Policy Assistant
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Ollama](https://img.shields.io/badge/Ollama-Llama%203.1%208B-black?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com/)
+[![vLLM](https://img.shields.io/badge/vLLM-Llama%203.3%2070B-1a1a2e?style=for-the-badge&logo=nvidia&logoColor=white)](https://docs.vllm.ai/)
+[![Ollama](https://img.shields.io/badge/Ollama-nomic--embed--text-black?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.2.5-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://github.com/langchain-ai/langgraph)
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-1.5.9-FF6719?style=for-the-badge&logo=databricks&logoColor=white)](https://www.trychroma.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.58.0-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![Local Only](https://img.shields.io/badge/Runs-100%25%20Locally-22c55e?style=for-the-badge&logo=homeassistant&logoColor=white)]()
-[![No API Keys](https://img.shields.io/badge/API%20Keys-None%20Required-22c55e?style=for-the-badge&logo=opensourceinitiative&logoColor=white)]()
-[![GPU](https://img.shields.io/badge/GPU-RTX%203050%206GB-76B900?style=for-the-badge&logo=nvidia&logoColor=white)]()
-[![License](https://img.shields.io/badge/License-Research%20Use-blue?style=for-the-badge)]()
+[![ACE HPC](https://img.shields.io/badge/Compute-ACE%20HPC%20A100%2080GB-76B900?style=for-the-badge&logo=nvidia&logoColor=white)]()
 [![Status](https://img.shields.io/badge/Status-MVP%20v0.1-orange?style=for-the-badge)]()
 
 > **MVP v0.1** · Target Demo: July 2, 2026 — ABI AI Community of Practice Meeting  
@@ -26,15 +24,17 @@
 
 ## What Is This?
 
-PolicyLens is a **locally-run agentic RAG (Retrieval-Augmented Generation) tool** that answers complex, multi-jurisdiction questions about African data protection laws.
+PolicyLens is an **agentic RAG (Retrieval-Augmented Generation)** tool that answers complex, multi-jurisdiction questions about African data protection laws and related policy/governance frameworks.
 
 Unlike standard RAG (one search → one answer), PolicyLens uses a **three-stage agentic pipeline**:
 
-1. **Planner** — breaks your question into targeted sub-questions, one per country
-2. **Retriever + Evaluator** — searches legal documents per country, then checks whether retrieved passages actually answer the sub-question. If not, it rewrites the query using alternative legal terminology and retries (up to 2 times)
+1. **Planner** — breaks your question into targeted sub-questions, one per country or policy scope
+2. **Retriever + Evaluator** — searches documents per scope, then checks whether retrieved passages actually answer the sub-question. If not, it rewrites the query using alternative legal terminology and retries (up to 2 times)
 3. **Synthesizer** — combines all retrieved context into a single, formally structured answer with specific section citations
 
 This approach handles questions that require reasoning across multiple countries' laws simultaneously — something vanilla RAG cannot do reliably.
+
+> **Compute split:** The reasoning LLM runs on a remote **ACE HPC A100 80GB** via vLLM; embeddings stay local on **Ollama** (`nomic-embed-text`). No cloud API keys are required.
 
 ---
 
@@ -50,21 +50,38 @@ Standard RAG fails on legal questions because:
 
 ---
 
-## Knowledge Base (5 Documents, 442 Chunks)
+## Knowledge Base (17 Documents, 1,450 Chunks)
 
-![chunks](https://img.shields.io/badge/Total%20Chunks-583-0ea5e9?style=flat-square)
-![docs](https://img.shields.io/badge/Source%20Documents-7-6366f1?style=flat-square)
-![countries](https://img.shields.io/badge/Countries-6%20%2B%20AU-14b8a6?style=flat-square)
+![chunks](https://img.shields.io/badge/Total%20Chunks-1450-0ea5e9?style=flat-square)
+![docs](https://img.shields.io/badge/Source%20Documents-17-6366f1?style=flat-square)
+![countries](https://img.shields.io/badge/Scopes-13-14b8a6?style=flat-square)
+
+### Binding laws
 
 | Country | Law | Chunks |
 |---|---|---|
-| 🇿🇦 South Africa | Protection of Personal Information Act (POPIA), 2013 | ![182](https://img.shields.io/badge/182%20chunks-1d4ed8?style=flat-square) |
-| 🇰🇪 Kenya | Data Protection Act No. 24 of 2019 | ![64](https://img.shields.io/badge/64%20chunks-1d4ed8?style=flat-square) |
-| 🇳🇬 Nigeria | Nigeria Data Protection Act (NDPA), 2023 | ![78](https://img.shields.io/badge/78%20chunks-1d4ed8?style=flat-square) |
-| 🇧🇼 Botswana | Data Protection Act, 2018 | ![40](https://img.shields.io/badge/40%20chunks-1d4ed8?style=flat-square) |
-| 🇸🇿 Eswatini | Data Protection Act, 2022 | ![60](https://img.shields.io/badge/60%20chunks-1d4ed8?style=flat-square) |
-| 🇿🇼 Zimbabwe | Data Protection Act [Chapter 11:12], 2021 | ![81](https://img.shields.io/badge/81%20chunks-1d4ed8?style=flat-square) |
-| 🌍 African Union | Malabo Convention on Cyber Security and Personal Data Protection, 2014 | ![78](https://img.shields.io/badge/78%20chunks-1d4ed8?style=flat-square) |
+| 🇿🇦 South Africa | Protection of Personal Information Act (POPIA), 2013 | 182 |
+| 🇰🇪 Kenya | Data Protection Act No. 24 of 2019 | 64 |
+| 🇳🇬 Nigeria | Nigeria Data Protection Act (NDPA), 2023 | 78 |
+| 🇧🇼 Botswana | Data Protection Act, 2018 | 40 |
+| 🇸🇿 Eswatini | Data Protection Act, 2022 | 60 |
+| 🇿🇼 Zimbabwe | Data Protection Act [Chapter 11:12], 2021 | 81 |
+| 🌍 African Union | Malabo Convention on Cyber Security and Personal Data Protection, 2014 | 78 |
+
+### Policy & governance documents
+
+| Scope | Document | Chunks |
+|---|---|---|
+| African Union | Digital Transformation Strategy for Africa (2020–2030) | 141 |
+| African Union | Continental Artificial Intelligence Strategy, July 2024 | 152 |
+| African Union | Science, Technology and Innovation Strategy (STISA 2034), 2025–2034 | 82 |
+| African Union | Data Policy Framework, 2022 | 221 |
+| EU-Africa | PerMed Policy Brief No. 2 — Personalised Medicine Collaboration, January 2025 | 27 |
+| OECD | Facilitating the Secondary Use of Health Data for Public Interest Purposes Across Borders, June 2025 | 118 |
+| Pathogen Data Network | Data Publishing Policy Version 2, June 2025 | 4 |
+| SADC | Cyber-Infrastructure Framework, June 2016 | 38 |
+| Wellcome Trust | Tackling Pathogen Genomic Sequence Data Sharing Challenges, 2025 | 42 |
+| International | Thaldar et al. — Communicating clearly about data sharing in genomics (Human Genomics, 2025) | 42 |
 
 Each chunk carries structured metadata: `country`, `document_name`, `document_type`, `section_heading`, `start_page`, `end_page`, `chunk_index`.
 
@@ -79,13 +96,13 @@ User Question
 ┌─────────────────────────────────────┐
 │  STAGE 1: PLANNER                   │
 │  LLM breaks question into           │
-│  sub-questions, one per country     │
+│  sub-questions, one per scope       │
 └───────────────┬─────────────────────┘
                 │  sub-questions[]
                 ▼
 ┌─────────────────────────────────────┐  ◄─────────────────────┐
 │  STAGE 2: RETRIEVER                 │                        │
-│  ChromaDB search (country filter)   │                        │
+│  ChromaDB search (scope filter)     │                        │
 │  → top-5 relevant chunks            │                        │
 └───────────────┬─────────────────────┘                        │
                 │                                              │
@@ -118,184 +135,16 @@ User Question
 
 ## Tech Stack
 
-| Component | Technology | Version |
+| Component | Technology | Notes |
 |---|---|---|
-| LLM (reasoning) | ![Ollama](https://img.shields.io/badge/Llama%203.1%208B-Ollama-black?style=flat-square&logo=ollama) | — |
-| Embeddings | ![nomic](https://img.shields.io/badge/nomic--embed--text-Ollama-black?style=flat-square&logo=ollama) | — |
-| Vector store | ![ChromaDB](https://img.shields.io/badge/ChromaDB-local%20persistent-FF6719?style=flat-square) | 1.5.9 |
-| Orchestration | ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=flat-square&logo=langchain) | 1.2.5 |
-| LangChain integrations | ![LangChain](https://img.shields.io/badge/langchain--ollama%20%2F%20langchain--chroma-1C3C3C?style=flat-square&logo=langchain) | 1.1.0 / 1.1.0 |
-| Document parsing | ![pdfplumber](https://img.shields.io/badge/pdfplumber-PDF%20text%20extraction-red?style=flat-square) | 0.11.9 |
-| Frontend | ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white) | 1.58.0 |
-| Runtime | ![Python](https://img.shields.io/badge/Python-3.12.6-3776AB?style=flat-square&logo=python&logoColor=white) | 3.12.6 |
-
-> ![Local](https://img.shields.io/badge/Runs-100%25%20Locally-22c55e?style=flat-square&logo=homeassistant&logoColor=white) &nbsp; ![NoKeys](https://img.shields.io/badge/No%20Cloud%20API%20Keys-Required-22c55e?style=flat-square&logo=opensourceinitiative&logoColor=white)
-
----
-
-## Hardware Requirements
-
-| Resource | Minimum | Current (Dev) | A100 (Recommended) |
-|---|---|---|---|
-| GPU VRAM | 6 GB | RTX 3050 (6 GB) | A100 40 GB or 80 GB |
-| System RAM | 16 GB | 24 GB DDR5 | 80–320 GB (cloud instance) |
-| Storage | 10 GB free | NVMe SSD | 200 GB+ (for larger model variants) |
-| CUDA | 11.8+ | 12.7 | 11.8+ (A100 supports up to 12.x) |
-| OS | Windows 10/11 or Linux | Windows | Linux (Ubuntu 20.04 / 22.04 recommended) |
-
----
-
-## Running on an A100 (Cloud / HPC)
-
-> These notes apply to any A100 instance — Google Colab Pro+, Lambda Labs, Vast.ai, RunPod, or a university HPC cluster. The pipeline still uses Ollama, so the code changes are minimal.
-
-### Why the A100 Changes Things
-
-On the RTX 3050 (6 GB VRAM), only `llama3.1:8b` fits comfortably. The A100's 40–80 GB VRAM opens up much larger models that will produce significantly better legal reasoning and citation quality:
-
-| Model | VRAM needed | Quality vs 8B | Notes |
-|---|---|---|---|
-| `llama3.1:8b` | ~5 GB | baseline | Current dev model |
-| `llama3.1:70b` | ~40 GB | substantially better | Fits on A100 40 GB (Q4) |
-| `llama3.1:70b` (full precision) | ~140 GB | best | Needs A100 80 GB x2 |
-| `llama3.3:70b` | ~40 GB | better instruction following | Good alternative to 3.1:70b |
-| `qwen2.5:72b` | ~43 GB | strong legal reasoning | Worth benchmarking |
-| `mistral-large:123b` | ~70 GB | very strong | Fits on A100 80 GB (Q4) |
-
-For a first A100 experiment, **`llama3.1:70b`** is the recommended upgrade — same model family as the current setup, so the prompts need no changes.
-
----
-
-### Step 1 — Install Ollama on Linux
-
-```bash
-# Install Ollama (Linux one-liner)
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Verify it starts and detects the GPU
-ollama serve &
-ollama list
-```
-
-Ollama automatically uses CUDA if available. Verify GPU detection:
-
-```bash
-nvidia-smi                        # confirm A100 is visible
-ollama run llama3.1:8b "hello"   # quick smoke test
-```
-
----
-
-### Step 2 — Pull the Larger Model
-
-```bash
-# Pull the 70B model (takes ~25 min on a fast connection — it's ~40 GB)
-ollama pull llama3.1:70b
-
-# Confirm it's listed
-ollama list
-```
-
----
-
-### Step 3 — Clone the Repo and Set Up
-
-```bash
-git clone https://github.com/atwine/Africa-Policy-Lens.git
-cd Africa-Policy-Lens
-
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Place your PDF documents in `docs/` (see README setup section), then run ingestion:
-
-```bash
-python ingest.py
-```
-
----
-
-### Step 4 — Switch the Model in `config.py`
-
-Only **one line** needs to change:
-
-```python
-# config.py — change this line
-LLM_MODEL = "llama3.1:70b"    # was "llama3.1:8b"
-
-# Optionally raise temperature slightly — larger models handle 0.1–0.2 well
-LLM_TEMPERATURE = 0.1          # no change needed
-
-# You can also increase retrieval depth on A100 since synthesis is faster
-TOP_K = 7                      # was 5 — more context per sub-question
-MAX_RETRIES = 3                # was 2 — afford one extra retry
-```
-
-The embedding model (`nomic-embed-text`) is unchanged — it's already fast and small.
-
----
-
-### Step 5 — Run the App
-
-```bash
-# If running on a remote instance, expose the Streamlit port
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
-
-# Then access via your instance's public IP:
-# http://<instance-ip>:8501
-```
-
-If your cloud provider requires it, open port 8501 in the firewall / security group settings.
-
-For Jupyter-based environments (Colab, JupyterHub), use a tunnel instead:
-
-```bash
-# In a notebook cell — creates a public URL via localtunnel
-!npm install -g localtunnel
-!streamlit run app.py &>/dev/null &
-!npx localtunnel --port 8501
-```
-
----
-
-### Step 6 — Benchmark the Improvement
-
-Run the same 4 demo questions on both models and compare:
-
-```python
-# benchmark.py — run from the project root
-import time, sys
-sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from graph import run_query
-from config import DEMO_QUESTIONS
-
-for i, q in enumerate(DEMO_QUESTIONS, 1):
-    start = time.time()
-    result = run_query(q)
-    elapsed = time.time() - start
-    rewrites = sum(1 for l in result["process_log"] if l.startswith("🔄"))
-    print(f"\nQ{i} | {elapsed:.0f}s | rewrites={rewrites}")
-    print(result["final_answer"][:400])
-    print("-" * 60)
-```
-
-Things to note in your comparison:
-- **Citation specificity** — does the 70B cite more precise section numbers?
-- **Retry rate** — does the evaluator need fewer rewrites (better first-pass retrieval quality)?
-- **Answer structure** — is the synthesis more formally structured?
-- **Hallucination check** — manually verify cited sections exist in the source PDFs
-
----
-
-### Tips for A100 Experiments
-
-- **Parallel sub-question retrieval** — on the A100 you have headroom to run sub-questions concurrently with `asyncio`. This is the single biggest speed improvement available beyond model size.
-- **Larger chunks** — with a 70B model's larger context window (128K tokens), you can safely increase `CHUNK_SIZE_CHARS` to `2500–3000` and `TOP_K` to `8–10` for richer context per query. Re-run `ingest.py` after changing chunk settings.
-- **Embedding upgrade** — consider swapping `nomic-embed-text` for `mxbai-embed-large` (`ollama pull mxbai-embed-large`) which has a larger embedding dimension (1024 vs 768) and may improve retrieval precision on legal text. Requires wiping and re-running ingestion.
-- **Quantisation** — Ollama uses Q4_K_M quantisation by default for 70B models. If you have an A100 80 GB, you can pull the full-precision variant for marginally better quality at the cost of ~3× more VRAM.
-- **Keep Ollama's base URL the same** — `config.py` already uses `OLLAMA_BASE_URL = "http://localhost:11434"`, which works identically on Linux.
+| LLM (reasoning) | Llama 3.3 70B Instruct AWQ | vLLM on ACE HPC A100 80GB |
+| Embeddings | nomic-embed-text | Ollama (local) |
+| Vector store | ChromaDB | Local persistent |
+| Orchestration | LangGraph | 1.2.5 |
+| LangChain integrations | langchain-openai / langchain-ollama / langchain-chroma | — |
+| Document parsing | pdfplumber | 0.11.9 |
+| Frontend | Streamlit | 1.58.0 |
+| Runtime | Python | 3.12.6 |
 
 ---
 
@@ -308,25 +157,33 @@ PolicyBot/
 ├── requirements.txt          ← Python dependencies
 ├── config.py                 ← All settings (models, paths, documents, demo questions)
 ├── ingest.py                 ← Run once: loads PDFs into ChromaDB
+├── download_docs.py          ← Download source PDFs from policy_download_list.md
 ├── retrieval.py              ← ChromaDB search utilities with metadata filtering
-├── nodes.py                  ← LangGraph node functions (plan, retrieve, evaluate, rewrite, synthesize)
+├── nodes.py                  ← LangGraph node functions (plan, retrieve, evaluate, rewrite, synthesize, follow-up)
 ├── graph.py                  ← LangGraph flow wiring + run_query() entry point
-├── app.py                    ← Streamlit UI
+├── app.py                    ← Streamlit UI (two tabs: About + PolicyLens)
 │
 ├── prompts/
 │   ├── planner.txt           ← System prompt for Stage 1 (research planning)
 │   ├── evaluator.txt         ← System prompt for Stage 2 (sufficiency checking)
 │   ├── rewriter.txt          ← System prompt for Stage 2 (query rewriting with legal synonyms)
-│   └── synthesizer.txt       ← System prompt for Stage 3 (formal answer generation)
+│   ├── synthesizer.txt       ← System prompt for Stage 3 (formal answer generation)
+│   └── follow_up_generator.txt ← System prompt for Stage 4 (follow-up question suggestions)
 │
-├── docs/                     ← Source PDF documents (place here before ingesting)
+├── docs/                     ← Source PDF documents
 │   ├── south_africa_popia.pdf
 │   ├── kenya_dpa_2019.pdf
 │   ├── Nigeria_Data_Protection_Act_2023.pdf
 │   ├── botswana.pdf
-│   └── au_malabo_convention.pdf
+│   ├── eswatini.pdf
+│   ├── zimbabwe1.pdf
+│   ├── au_malabo_convention.pdf
+│   └── policy_governance/    ← Policy/governance PDFs
 │
-└── chroma_db/                ← ChromaDB persistent storage (auto-created by ingest.py)
+├── docs/future/              ← Continental/regional frameworks for future ingestion
+├── docs/reference/           ← Research papers for reference
+├── chroma_db/                ← ChromaDB persistent storage (auto-created by ingest.py)
+└── sessions/                 ← Saved query results (auto-created by app.py)
 ```
 
 ---
@@ -336,21 +193,20 @@ PolicyBot/
 ### Prerequisites
 
 - Python 3.10+
-- [Ollama](https://ollama.com/download) installed and running
+- [Ollama](https://ollama.com/download) installed and running locally (for embeddings only)
+- Network access to the ACE HPC vLLM endpoint configured in `config.py`
 
-### 1. Pull the required Ollama models
+### 1. Pull the required Ollama embedding model
 
 ```bash
-ollama pull llama3.1:8b        # Main reasoning model (~4.7 GB)
 ollama pull nomic-embed-text   # Embedding model (~274 MB)
 ```
 
-Verify they are available:
+Verify it is available:
 
 ```bash
 ollama list
 # Expected output includes:
-# llama3.1:8b
 # nomic-embed-text:latest
 ```
 
@@ -360,17 +216,18 @@ ollama list
 C:\Users\ic\OneDrive\Desktop\PolicyBot\
 ```
 
-### 3. Place the source PDFs in `docs/`
+### 3. Place the source PDFs
 
-The following files must be present (text-based PDFs only — scanned image PDFs will not work):
+You can either:
 
+- **Use the existing documents** already in `docs/` and `docs/policy_governance/`, or
+- **Download the full curated list** from `docs/policy_download_list.md`:
+
+```bash
+python download_docs.py
 ```
-docs/south_africa_popia.pdf
-docs/kenya_dpa_2019.pdf
-docs/Nigeria_Data_Protection_Act_2023.pdf
-docs/botswana.pdf
-docs/au_malabo_convention.pdf
-```
+
+The script creates `docs/future/` and `docs/reference/` as needed, skips files that already exist, and verifies each download starts with `%PDF`.
 
 ### 4. Create and activate a virtual environment
 
@@ -394,6 +251,7 @@ python ingest.py
 ```
 
 Expected output:
+
 ```
 ============================================================
 PolicyLens — Document Ingestion Pipeline
@@ -405,12 +263,10 @@ Processing: south_africa_popia.pdf
   Generated 182 chunks
 ...
 INGESTION SUMMARY
-  African Union : 78 chunks
+  African Union : 674 chunks
   Botswana      : 40 chunks
-  Kenya         : 64 chunks
-  Nigeria       : 78 chunks
-  South Africa  : 182 chunks
-  TOTAL         : 442 chunks
+  ...
+  TOTAL         : 1450 chunks
 ```
 
 ---
@@ -418,7 +274,7 @@ INGESTION SUMMARY
 ## Running the App
 
 ```bash
-# Make sure Ollama is running, then:
+# Make sure Ollama is running locally (for embeddings), then:
 cd "C:\Users\ic\OneDrive\Desktop\PolicyBot"
 venv\Scripts\activate
 streamlit run app.py
@@ -426,27 +282,39 @@ streamlit run app.py
 
 Opens at: **http://localhost:8501**
 
+The app opens on the **About** tab by default, which explains the project, lists the knowledge base, and shows the 4 preset demo questions. Switch to the **PolicyLens** tab to run questions.
+
 ---
 
 ## Using the UI
 
-![PolicyLens User Interface](images/User%20Interface.png)
+### Two-tab layout
+
+- **About** — project overview, knowledge base table, sample questions, how it works, tech stack
+- **PolicyLens** — the interactive question + analysis interface
 
 ### Preset Demo Buttons
-Four buttons covering the main question types:
 
-| Button | Type | Countries |
+Four buttons aligned with the ABI demo priorities:
+
+| Button | Type | Scopes |
 |---|---|---|
 | 🔀 Compare SA & Kenya | Alignment / conflict analysis | South Africa, Kenya, AU |
-| 🏥 Compliance: SA, Nigeria & Botswana | Requirements checklist | South Africa, Nigeria, Botswana |
+| 🏥 Health data: SA & Nigeria | Compliance checklist | South Africa, Nigeria |
 | 🌍 Multi-country gap analysis | Gap identification | South Africa, Kenya, Nigeria |
 | 🏛️ National vs AU Malabo | Comparative framework | All + African Union |
 
 ### Custom Questions
-Type any question in the text box and click **Ask PolicyLens**. Questions that reference countries outside the knowledge base will trigger a broad search across all available documents.
+
+Type any question in the text box and click **Ask PolicyLens**. Questions that reference scopes outside the knowledge base trigger a broad search across all available documents.
+
+### Follow-up Questions
+After each analysis, PolicyLens generates 3–5 logical follow-up questions (causal, comparative, gap, or implementation angles). Click any suggestion to run it through the pipeline and see the new answer.
 
 ### Agent Activity Log
-The left panel shows exactly what the agents are doing in real time:
+
+The left panel shows exactly what the agents are doing:
+
 - 📋 Planning step — sub-questions and reasoning
 - 🔍 Each ChromaDB search with passage count
 - ✅ / ⚠️ Evaluator verdict per sub-question
@@ -454,10 +322,12 @@ The left panel shows exactly what the agents are doing in real time:
 - 📝 Synthesis step
 
 ### Metrics Bar
+
 Below the log: number of sub-questions generated, total searches run, and query rewrites triggered.
 
 ### Download
-The analysis panel includes a **Download as .txt** button for saving answers.
+
+The analysis panel includes a **Download analysis as .txt** button for saving answers.
 
 ---
 
@@ -499,8 +369,13 @@ When running via `streamlit run app.py` or the test script, the terminal shows v
 All settings live in `config.py`. Common things to change:
 
 ```python
-# Switch LLM model
-LLM_MODEL = "llama3.1:8b"        # or "llama3.2:3b" for faster/lighter responses
+# vLLM endpoint (ACE HPC)
+VLLM_BASE_URL = "http://10.35.50.41:8000/v1"
+LLM_MODEL = "ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4"
+
+# Local Ollama embeddings
+OLLAMA_BASE_URL = "http://localhost:11434"
+EMBEDDING_MODEL = "nomic-embed-text"
 
 # Retrieval depth
 TOP_K = 5                          # chunks returned per search
@@ -513,16 +388,17 @@ CHUNK_OVERLAP_CHARS = 200
 
 ### Adding a New Country / Document
 
-1. Place the PDF (text-based, not scanned) in `docs/`
+1. Place the PDF (text-based, not scanned) in `docs/` or a subdirectory
 2. Add an entry to `DOCUMENTS` in `config.py`:
    ```python
    "filename.pdf": {
-       "country": "Country Name",
-       "document_type": "binding_law",
-       "document_name": "Full Law Name, Year"
+       "country": "Country or Scope Name",
+       "document_type": "binding_law",  # or "continental_strategy", "policy_brief", etc.
+       "document_name": "Full Document Name, Year",
+       "source_dir": "docs/subdir"      # optional, defaults to "docs/"
    }
    ```
-3. Update `prompts/planner.txt` — add the country name to the "Available countries" line
+3. Update `prompts/planner.txt` — add the scope to the "Available countries and scopes" line
 4. Clear the existing ChromaDB and re-run ingestion:
    ```bash
    Remove-Item -Recurse chroma_db\*   # Windows PowerShell
@@ -537,7 +413,7 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 
 | File | Controls |
 |---|---|
-| `planner.txt` | How sub-questions are generated; which countries to consider |
+| `planner.txt` | How sub-questions are generated; which scopes to consider |
 | `evaluator.txt` | How strict the sufficiency check is |
 | `rewriter.txt` | Legal synonym substitutions for query rewriting |
 | `synthesizer.txt` | Answer format, citation style, persona |
@@ -552,9 +428,9 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 ![latency](https://img.shields.io/badge/Response%20Time-30--90s-f59e0b?style=flat-square)
 
 - **Scanned PDFs not supported** — documents must have a text layer. The original Uganda DPPA 2019 PDF was image-only and had to be replaced.
-- **LLM response time** — Llama 3.1 8B on a 6 GB GPU takes 30–90 seconds per full pipeline run depending on question complexity.
+- **LLM response time** — the 70B model on the remote vLLM server takes 30–90 seconds per full pipeline run depending on question complexity and network latency.
 - **No streaming within Streamlit** — the process log appears all at once after the pipeline completes (LangGraph runs synchronously). Real-time streaming requires a streaming-aware graph implementation.
-- **ChromaDB metadata filtering** — requires exact country name match. Typos in questions ("South Africa" vs "S. Africa") are handled by the planner, not the retriever.
+- **ChromaDB metadata filtering** — requires exact scope name match. Typos in questions ("South Africa" vs "S. Africa") are handled by the planner, not the retriever.
 - **English only** — all source documents are in English; the system does not support French-language documents (e.g., some Francophone African laws).
 
 ---
@@ -563,7 +439,7 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 
 ![planned](https://img.shields.io/badge/Status-Post--MVP%20Planning-8b5cf6?style=flat-square)
 
-- [ ] Add more African countries as text-based PDFs become available (Rwanda, Tanzania, Ghana, Zimbabwe)
+- [ ] Add more African countries as text-based PDFs become available (Rwanda, Tanzania, Ghana)
 - [ ] Streaming log updates within Streamlit using `graph.stream()`
 - [ ] Side-by-side clause comparison view
 - [ ] Citation linking — click a citation to open the source PDF at that page
@@ -577,20 +453,23 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 ## References
 
 ### Architecture
+
 - Google Research: [Unlocking Dependable Responses with Gemini Enterprise Agent Platforms: Agentic RAG](https://research.google/blog/unlocking-dependable-responses-with-gemini-enterprise-agent-platforms-agentic-rag/)
 
 ### Academic
+
 - MA-RAG: Multi-Agent RAG via Collaborative Chain-of-Thought Reasoning (2024)
 - HM-RAG: Hierarchical Multi-Agent RAG (12.95% accuracy improvement via multi-source retrieval)
 - MAO-ARAG: Adaptive Agentic RAG with iterative context evaluation
 
 ### Related Projects
+
 - [datalaw.bot](https://datalaw.bot) — DS-I Africa Law project (12 African countries, GPT-4o)
 - [datalaw.africa](https://datalaw.africa) — DTA/MTA resources and templates
 
 ### Source Documents
+
 - POPIA: https://popia.co.za/
 - Kenya DPA: https://www.interior.go.ke/sites/default/files/2024-09/27.%20Data%20Protection%20Act%202019.pdf
 - Nigeria NDPA: https://fccpc.gov.ng
 - Malabo Convention: https://ccdcoe.org/uploads/2018/11/AU-270614-CSConvention.pdf
-

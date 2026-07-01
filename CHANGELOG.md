@@ -19,6 +19,34 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - DTA/MTA draft generation based on applicable jurisdiction requirements
 - French-language document support for Francophone African laws
 - Parallel sub-question retrieval for faster pipeline execution
+- Conversation threading — accumulate follow-up answers below previous answers and download the full thread as one file
+
+---
+
+## [0.1.3] — 2026-07-01
+
+### Added
+
+- **vLLM / A100 backend** — migrated the reasoning LLM from local Ollama (`llama3.1:8b`) to a remote vLLM server running `ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4` on ACE HPC (A100 80GB). Embeddings remain local via Ollama (`nomic-embed-text`) (`config.py`, `nodes.py`, `requirements.txt`, `README.md`)
+- **Policy & governance documents** — ingested 4 new AU strategy/policy PDFs into the knowledge base: Digital Transformation Strategy (2020–2030), Continental AI Strategy (July 2024), STISA 2034 (2025–2034), and Data Policy Framework (2022) (`config.py`, `ingest.py`, `prompts/planner.txt`)
+- **Two-tab Streamlit UI** — split `app.py` into an **About** tab (project overview, knowledge base table, sample questions, tech stack) and a **PolicyLens** tab (the interactive question interface)
+- **Follow-up question generator** — new `follow_up_node` in the LangGraph pipeline that generates 3–5 logical follow-up questions from the final answer; displayed as clickable buttons below the analysis in `app.py` (`prompts/follow_up_generator.txt`, `nodes.py`, `graph.py`, `app.py`)
+- **PDF download script** — `download_docs.py` parses `docs/policy_download_list.md`, downloads all listed PDFs into the correct directories, skips existing valid files, verifies PDF headers, and supports `--no-verify-ssl` for self-signed certificates (`download_docs.py`, `requirements.txt`, `docs/policy_download_list.md`)
+- **Clear saved sessions** button in the sidebar with a confirmation step (`app.py`)
+- **Collapsible result panels** — Analysis and Agent Activity Log are now stacked vertically and can be folded/unfolded (`app.py`)
+
+### Changed
+
+- **Demo questions** — replaced the original 6 preset questions with 4 stakeholder-aligned questions (South Africa vs Kenya, health data SA vs Nigeria, multi-country gap analysis, national laws vs AU Malabo). Uganda references replaced with Nigeria because the Uganda PDF is not available (`config.py`, `app.py`)
+- **Knowledge base size** — expanded from 7 documents / 583 chunks to 17 documents / 1,450 chunks (`config.py`, `README.md`)
+- **Sidebar stack info** — updated to reflect vLLM on ACE HPC A100 instead of local Ollama (`app.py`, `README.md`)
+- **README refresh** — badges, tech stack, setup instructions, hardware notes, project structure, and limitations updated to match the vLLM/A100 setup and two-tab UI (`README.md`)
+
+### Fixed
+
+- **White text on white background** in the About tab and analysis card — added explicit `color: #1e293b` to `.answer-card` and `.about-card` CSS rules (`app.py`)
+- **Broken emoji rendering** in sidebar country list and log search indicator (`app.py`)
+- **Sidebar policy/governance section** — added the new AU strategy documents to the sidebar knowledge base list (`app.py`)
 
 ---
 

@@ -46,3 +46,8 @@ sessions/*.json
 
 # ── Logs ──────────────────────────────────────────────────────
 *.log
+download_log*.txt
+
+# ── Auto-downloaded future/reference PDFs (recreated by download_docs.py) ──
+docs/future/
+docs/reference/

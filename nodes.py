@@ -11,16 +11,23 @@ fields to update.
 import json
 import re
 import sys
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI  # vLLM exposes an OpenAI-compatible API
 from langchain_core.messages import SystemMessage, HumanMessage
 from retrieval import get_vectorstore, search_by_country, search_all, format_context
-from config import LLM_MODEL, LLM_TEMPERATURE, MAX_RETRIES, TOP_K, OLLAMA_BASE_URL
+from config import LLM_MODEL, LLM_TEMPERATURE, MAX_RETRIES, TOP_K, VLLM_BASE_URL
 
 
 # ---------------------------------------------------------------------------
 # Initialise shared resources (loaded once, reused across calls)
 # ---------------------------------------------------------------------------
-llm = ChatOllama(model=LLM_MODEL, temperature=LLM_TEMPERATURE, base_url=OLLAMA_BASE_URL)
+# ChatOpenAI with openai_api_key="EMPTY" is the standard way to call a vLLM
+# server — the key is required by the client but ignored server-side.
+llm = ChatOpenAI(
+    model=LLM_MODEL,
+    temperature=LLM_TEMPERATURE,
+    base_url=VLLM_BASE_URL,
+    openai_api_key="EMPTY",  # vLLM does not enforce auth; value is required but ignored
+)
 vectorstore = get_vectorstore()
 
 
@@ -373,4 +380,64 @@ def synthesize_node(state: dict) -> dict:
     return {
         "final_answer": final_answer,
         "process_log": state.get("process_log", []) + [log_entry, "✅ **Analysis complete!**"]
+    }
+
+
+# ---------------------------------------------------------------------------
+# STAGE 4: Follow-up Question Generator
+# ---------------------------------------------------------------------------
+def follow_up_node(state: dict) -> dict:
+    """
+    Reads the original question and final answer, then generates
+    3-5 logical follow-up questions that deepen the investigation.
+
+    Updates: follow_up_questions, process_log
+    """
+    _log("\n" + "=" * 60)
+    _log("[STAGE 4] FOLLOW-UP QUESTION GENERATOR")
+    _log("=" * 60)
+    _log("  Generating follow-up questions from the analysis...")
+
+    system_prompt = load_prompt("follow_up_generator.txt")
+    user_question = state["user_question"]
+    final_answer = state.get("final_answer", "")
+
+    # Strip the disclaimer from the answer so the generator focuses on substance
+    main_answer = final_answer.split("\n\n---\n")[0] if "\n\n---\n" in final_answer else final_answer
+
+    response = llm.invoke([
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=(
+            f"Original question: {user_question}\n\n"
+            f"Analysis answer:\n{main_answer}\n\n"
+            f"Generate follow-up questions based on the analysis above."
+        ))
+    ])
+
+    raw = response.content.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
+
+    try:
+        parsed = json.loads(raw)
+        follow_ups = parsed.get("follow_up_questions", [])
+    except json.JSONDecodeError:
+        _log("  WARNING: Could not parse follow-up questions JSON — returning empty list.")
+        follow_ups = []
+
+    # Deduplicate and limit to a maximum of 5
+    seen = set()
+    clean = []
+    for q in follow_ups:
+        q = q.strip()
+        if q and q not in seen and len(clean) < 5:
+            clean.append(q)
+            seen.add(q)
+
+    _log(f"  Generated {len(clean)} follow-up question(s).")
+    for i, q in enumerate(clean, 1):
+        _log(f"    {i}. {q}")
+
+    return {
+        "follow_up_questions": clean,
+        "process_log": state.get("process_log", []) + [f"💡 **Generated {len(clean)} follow-up question(s)**"]
     }
