@@ -49,6 +49,10 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Broken emoji rendering** in sidebar country list and log search indicator (`app.py`)
 - **Sidebar policy/governance section** — added the new AU strategy documents to the sidebar knowledge base list (`app.py`)
 - **Follow-up questions not re-running the pipeline** — clicking a suggested follow-up reset the UI to the default state because the follow-up button was rendered after the pipeline block and relied on `st.rerun()` to pass the question back to the top. Restructured the PolicyLens tab so follow-up buttons are rendered before the pipeline, set `selected_question` directly in the same execution, and the result is persisted to `st.session_state.last_result`. Also replaced deprecated `use_container_width` with `width` across all buttons.
+- **Missing `Path` import** — `clear all saved sessions` button crashed with `NameError: name 'Path' is not defined`; added `from pathlib import Path` import (`app.py`)
+- **Empty or malformed planner output** — if the LLM returns an empty `sub_questions` list or unparseable JSON, `plan_node` now falls back to a single broad sub-question covering all scopes instead of crashing (`nodes.py`)
+- **Out-of-scope / greeting inputs crashing the pipeline** — added `is_in_scope()` heuristic in `app.py` to detect greetings, thanks, and off-topic questions; displays a friendly scope explanation instead of running the LLM pipeline
+- **Unhandled pipeline runtime errors** — wrapped `run_query()` in `app.py` with `try/except` to catch vLLM connection errors, ChromaDB failures, timeouts, and unexpected exceptions; displays a clear error card with likely causes and technical details instead of a Streamlit crash
 
 ---
 

@@ -26,11 +26,12 @@
 
 PolicyLens is an **agentic RAG (Retrieval-Augmented Generation)** tool that answers complex, multi-jurisdiction questions about African data protection laws and related policy/governance frameworks.
 
-Unlike standard RAG (one search → one answer), PolicyLens uses a **three-stage agentic pipeline**:
+Unlike standard RAG (one search → one answer), PolicyLens uses a **four-stage agentic pipeline**:
 
 1. **Planner** — breaks your question into targeted sub-questions, one per country or policy scope
 2. **Retriever + Evaluator** — searches documents per scope, then checks whether retrieved passages actually answer the sub-question. If not, it rewrites the query using alternative legal terminology and retries (up to 2 times)
 3. **Synthesizer** — combines all retrieved context into a single, formally structured answer with specific section citations
+4. **Follow-up Generator** — suggests 3–5 grounded follow-up questions from the final answer
 
 This approach handles questions that require reasoning across multiple countries' laws simultaneously — something vanilla RAG cannot do reliably.
 
@@ -128,7 +129,14 @@ User Question
 └───────────────┬─────────────────────┘
                 │
                 ▼
-        Final Answer (UI)
+┌─────────────────────────────────────┐
+│  STAGE 4: FOLLOW-UP GENERATOR       │
+│  Suggests 3–5 grounded follow-up   │
+│  questions from the final answer    │
+└───────────────┬─────────────────────┘
+                │
+                ▼
+        Final Answer + Suggestions (UI)
 ```
 
 ---
@@ -180,8 +188,6 @@ PolicyBot/
 │   ├── au_malabo_convention.pdf
 │   └── policy_governance/    ← Policy/governance PDFs
 │
-├── docs/future/              ← Continental/regional frameworks for future ingestion
-├── docs/reference/           ← Research papers for reference
 ├── chroma_db/                ← ChromaDB persistent storage (auto-created by ingest.py)
 └── sessions/                 ← Saved query results (auto-created by app.py)
 ```
@@ -313,7 +319,7 @@ After each analysis, PolicyLens generates 3–5 logical follow-up questions (cau
 
 ### Agent Activity Log
 
-The left panel shows exactly what the agents are doing:
+A collapsible panel below the analysis shows exactly what the agents did:
 
 - 📋 Planning step — sub-questions and reasoning
 - 🔍 Each ChromaDB search with passage count
@@ -417,6 +423,7 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 | `evaluator.txt` | How strict the sufficiency check is |
 | `rewriter.txt` | Legal synonym substitutions for query rewriting |
 | `synthesizer.txt` | Answer format, citation style, persona |
+| `follow_up_generator.txt` | Follow-up question generation from the final answer |
 
 ---
 
