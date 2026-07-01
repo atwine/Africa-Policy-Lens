@@ -19,6 +19,7 @@ from pathlib import Path
 from datetime import datetime
 import markdown as md  # converts LLM markdown text -> HTML for safe injection
 import streamlit as st
+import streamlit.components.v1 as components
 from graph import run_query_streaming
 from config import DEMO_QUESTIONS, DOCUMENTS
 
@@ -40,6 +41,7 @@ def save_session(question: str, result: dict) -> str:
         "final_answer": result.get("final_answer", ""),
         "process_log": result.get("process_log", []),
         "sub_questions": result.get("sub_questions", []),
+        "retrieved_passages": result.get("retrieved_passages", []),
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -85,8 +87,38 @@ def _render_log(lines: list, placeholder):
     )
 
 
+def _copy_button_html(text: str, label: str, key: str) -> str:
+    """Returns a small HTML/JS component that copies ``text`` to the clipboard."""
+    # Escape the text for safe insertion into JS string literal
+    safe_text = json.dumps(text)
+    return f"""
+    <div style="height:0px;">&nbsp;</div>
+    <button id="{key}" onclick="copyText()" style="
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+        transition: all 0.15s ease;
+    " onmouseover="this.style.background='linear-gradient(135deg, #1e40af, #2563eb)'" onmouseout="this.style.background='linear-gradient(135deg, #1d4ed8, #3b82f6)'">{label}</button>
+    <script>
+    function copyText() {{
+        navigator.clipboard.writeText({safe_text}).then(function() {{
+            var btn = document.getElementById("{key}");
+            btn.innerText = "✅ Copied!";
+            setTimeout(function() {{ btn.innerText = "{label}"; }}, 2000);
+        }});
+    }}
+    </script>
+    """
+
+
 def render_result(result: dict):
-    """Renders a complete result card: question banner, analysis, and agent log."""
+    """Renders a complete result card: question banner, analysis, sources, and agent log."""
     # Build scope badges from the sub-questions identified by the planner
     sub_qs = result.get("sub_questions", [])
     scopes = []
@@ -125,14 +157,34 @@ def render_result(result: dict):
         if disclaimer:
             st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
 
-        # Download button
-        st.download_button(
-            label="⬇️  Download analysis as .md",
-            data=answer,
-            file_name="policylens_analysis.md",
-            mime="text/markdown",
-            width="stretch"
-        )
+        # Action buttons: copy + download
+        copy_col, dl_col = st.columns(2)
+        with copy_col:
+            components.html(_copy_button_html(answer, "📋 Copy answer", "btn_copy_answer"), height=38)
+        with dl_col:
+            st.download_button(
+                label="⬇️  Download analysis as .md",
+                data=answer,
+                file_name="policylens_analysis.md",
+                mime="text/markdown",
+                width="stretch"
+            )
+
+    # Sources panel (collapsed by default)
+    sources = result.get("retrieved_passages", [])
+    if sources:
+        with st.expander("📚 Sources", expanded=False):
+            st.markdown('<div class="section-header">Retrieved sources</div>', unsafe_allow_html=True)
+            for p in sources:
+                chip = (
+                    f"<span class='source-chip'>"
+                    f"<strong>[Passage {p['number']}]</strong> "
+                    f"{p['document_name']} — "
+                    f"<em>{p['section_heading']}</em> "
+                    f"(p.{p['start_page']}-{p['end_page']}, score: {p['score']:.2f})"
+                    f"</span>"
+                )
+                st.markdown(chip, unsafe_allow_html=True)
 
     # Agent Activity Log panel (bottom, collapsed by default)
     with st.expander("🤖 Agent Activity Log", expanded=False):
@@ -224,6 +276,41 @@ html, body, [class*="css"] {
     margin-bottom: 1rem;
     color: white;
     font-size: 1rem;
+}
+
+/* Styled pill tabs */
+div[data-baseweb="tab-list"] {
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 0.3rem;
+    gap: 0.3rem;
+    border-bottom: none !important;
+}
+div[data-baseweb="tab-list"] button {
+    border-radius: 10px !important;
+    padding: 0.6rem 1.4rem !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    border: none !important;
+    color: #64748b !important;
+    background: transparent !important;
+    transition: all 0.15s ease;
+}
+div[data-baseweb="tab-list"] button[aria-selected="true"] {
+    background: #1d4ed8 !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
+}
+div[data-baseweb="tab-list"] button:hover:not([aria-selected="true"]) {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+/* Hide the default tab underline */
+div[data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+div[data-baseweb="tab-border"] {
+    display: none !important;
 }
 
 /* Section headers */
@@ -364,6 +451,26 @@ div.stButton > button[kind="primary"]:hover {
     border-radius: 999px;
     margin: 0.15rem 0.1rem;
 }
+
+/* Source chips in the Sources panel */
+.source-chip {
+    display: inline-block;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+    margin: 0.25rem 0.2rem;
+    font-size: 0.82rem;
+    color: #1e293b;
+    line-height: 1.4;
+}
+.source-chip strong {
+    color: #1d4ed8;
+}
+.source-chip em {
+    color: #475569;
+    font-style: normal;
+}
 .sidebar-section {
     font-size: 0.7rem;
     font-weight: 700;
@@ -371,6 +478,17 @@ div.stButton > button[kind="primary"]:hover {
     text-transform: uppercase;
     color: #9ca3af;
     margin: 1rem 0 0.4rem 0;
+}
+
+/* Responsive: stack columns on narrow screens */
+@media (max-width: 768px) {
+    div[data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -454,13 +572,19 @@ with st.sidebar:
                 full_ans = s.get("final_answer", "")
                 main = full_ans.rsplit("\n\n---\n", 1)[0] if "\n\n---\n" in full_ans else full_ans
                 st.markdown(main)
-                st.download_button(
-                    label="⬇️ Download",
-                    data=s.get("final_answer", ""),
-                    file_name=f"policylens_{ts_label.replace(' ', '_')}.md",
-                    mime="text/markdown",
-                    key=f"dl_{s.get('timestamp','')}",
-                )
+                dl_col, rerun_col = st.columns(2)
+                with dl_col:
+                    st.download_button(
+                        label="⬇️ Download",
+                        data=s.get("final_answer", ""),
+                        file_name=f"policylens_{ts_label.replace(' ', '_')}.md",
+                        mime="text/markdown",
+                        key=f"dl_{s.get('timestamp','')}",
+                    )
+                with rerun_col:
+                    if st.button("🔄 Re-run", key=f"rerun_{s.get('timestamp','')}"):
+                        st.session_state["rerun_question"] = s["question"]
+                        st.rerun()
 
         # ── Clear Sessions ─────────────────────────────────────────────────
         st.markdown("---")
@@ -509,10 +633,10 @@ with about_tab:
         and related policy/governance frameworks.
       </p>
       <p>
-        Unlike standard RAG (one search → one answer), PolicyLens uses a three-stage pipeline:
+        Unlike standard RAG (one search → one answer), PolicyLens uses a four-stage pipeline:
         it <strong>plans</strong> sub-questions per country or policy scope, <strong>retrieves</strong> and
-        <strong>evaluates</strong> legal passages iteratively, and then <strong>synthesizes</strong> a formal,
-        cited answer.
+        <strong>evaluates</strong> legal passages iteratively, <strong>synthesizes</strong> a formal cited answer,
+        and then <strong>generates follow-up questions</strong> to deepen the investigation.
       </p>
     </div>
     """, unsafe_allow_html=True)
@@ -590,6 +714,10 @@ with app_tab:
     ]
 
     selected_question = None
+
+    # Pick up re-run requests from past session sidebar buttons
+    if st.session_state.get("rerun_question"):
+        selected_question = st.session_state.pop("rerun_question")
 
     col1, col2 = st.columns(2, gap="medium")
 
@@ -688,6 +816,9 @@ with app_tab:
                 "process_log": [],
             }
 
+            import time
+            _pipeline_start = time.time()
+
             try:
                 with st.status("Running agentic pipeline...", expanded=True) as status:
                     for node_name, state_update in run_query_streaming(selected_question):
@@ -708,6 +839,12 @@ with app_tab:
                             # Safely look up the country for the current sub-question
                             country = sqs[idx].get("target_country", "") if idx < total else ""
                             st.write(f"Retrieved passages for **{country}** (sub-question {idx + 1}/{total})")
+                            # Show passage details in a collapsed expander for power users
+                            details = result.get("last_retrieval_details", [])
+                            if details:
+                                with st.expander("Passages", expanded=False):
+                                    for d in details:
+                                        st.caption(d)
                         elif node_name == "evaluate":
                             verdict = result.get("sufficiency_status", "")
                             icon = "✅" if verdict == "SUFFICIENT" else "⚠️"
@@ -721,7 +858,9 @@ with app_tab:
                             n_fup = len(result.get("follow_up_questions", []))
                             st.write(f"Generated **{n_fup}** follow-up question(s)")
 
-                    status.update(label="Analysis complete", state="complete", expanded=False)
+                    elapsed = int(time.time() - _pipeline_start)
+                    status.update(label=f"Analysis complete ({elapsed}s)", state="complete", expanded=False)
+                    st.toast(f"Analysis ready ({elapsed}s)", icon="✅")
 
             except Exception as e:
                 # Pipeline failure (e.g. vLLM unreachable, ChromaDB missing, timeout)

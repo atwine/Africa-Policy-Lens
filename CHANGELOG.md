@@ -22,6 +22,29 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [0.1.5] — 2026-07-01
+
+### Added
+
+- **Sources panel** — collapsed-by-default expander under the analysis lists every retrieved passage with document, section, page range, and relevance score, using stable global passage numbers (`app.py`, `nodes.py`, `graph.py`, `retrieval.py`)
+- **Copy answer button** — one-click clipboard copy next to the download button, using `streamlit.components.v1` with a small JS snippet (`app.py`)
+- **Passage-level progress detail** — live status widget now shows a collapsible "Passages" list per retrieval step so users can inspect exactly what was retrieved (`app.py`, `nodes.py`, `graph.py`)
+- **Re-run past sessions** — each saved session card has a **Re-run** button that feeds the original question back into the pipeline (`app.py`)
+- **Styled pill tabs** — About / PolicyLens tabs use rounded pill-style buttons instead of the default Streamlit underline (`app.py`)
+- **Completion toast + elapsed time** — pipeline status shows total elapsed time and fires a `st.toast()` notification when analysis is ready (`app.py`)
+- **Responsive layout** — preset question grid collapses to a single column on viewports narrower than 768px (`app.py`)
+
+### Changed
+
+- **Synthesizer prompt** — now explicitly asks the model to cite evidence using the `[Passage N]` labels provided in the context, enabling the new Sources panel (`prompts/synthesizer.txt`)
+- **About tab description** — updated from "three-stage" to "four-stage" pipeline to match the actual architecture (`app.py`)
+
+### Fixed
+
+- **Retrieval consistency** — source metadata, progress logs, and synthesizer context now all use the same relevance-filtered passages (score ≥ 0.45). Previously the log counted raw retrieved chunks while the synthesizer received only the filtered subset, so numbers could disagree (`nodes.py`, `retrieval.py`)
+
+---
+
 ## [0.1.4] — 2026-07-01
 
 ### Added

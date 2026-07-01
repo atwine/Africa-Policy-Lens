@@ -75,7 +75,7 @@ def search_all(
 RELEVANCE_THRESHOLD = 0.45  # Chunks below this score are too noisy to be useful
 
 
-def format_context(results: list) -> str:
+def format_context(results: list, start: int = 1) -> str:
     """
     Formats search results into a readable context string
     for passing to the LLM.
@@ -85,6 +85,10 @@ def format_context(results: list) -> str:
 
     Chunks with a relevance score below RELEVANCE_THRESHOLD are discarded
     to avoid passing noisy, off-topic passages to the synthesizer.
+
+    Args:
+        results: List of (doc, score) tuples from ChromaDB.
+        start: Starting number for global passage labels (default 1).
     """
     if not results:
         return "No relevant passages found."
@@ -103,7 +107,7 @@ def format_context(results: list) -> str:
     for i, (doc, score) in enumerate(filtered, 1):
         meta = doc.metadata
         context_parts.append(
-            f"[Passage {i}] "
+            f"[Passage {start + i - 1}] "
             f"(Source: {meta['document_name']}, "
             f"Section: {meta['section_heading']}, "
             f"Pages: {meta['start_page']}-{meta['end_page']}, "

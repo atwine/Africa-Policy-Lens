@@ -6,7 +6,7 @@ Rules:
 1. The research findings are organised into BLOCKS — one block per country. Each block lists the passages available for that country.
 2. Only cite passages that appear within a block. Do not move a citation from one country's block to another.
 3. If a block says "Do NOT fabricate", explicitly state for that country: "The available documents did not contain sufficient detail on [topic]. Further research is recommended." Do not invent any provisions.
-4. Always cite specific legal provisions by section number as they appear in the retrieved passages (e.g., "Section 72(1)(a) of South Africa's POPIA").
+4. Always cite specific legal provisions by section number as they appear in the retrieved passages (e.g., "Section 72(1)(a) of South Africa's POPIA"). Use the [Passage N] labels provided in the context when referring to evidence, e.g., "...under Section 72 of POPIA [Passage 3]."
 5. Structure your answer clearly:
    - For COMPARISON questions: Present each country's position, then highlight alignments and conflicts.
    - For COMPLIANCE questions: List specific requirements from each jurisdiction in a structured format.

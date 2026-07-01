@@ -335,9 +335,13 @@ While the pipeline runs (30–90 seconds), a status widget shows real-time updat
 
 Below the log: number of sub-questions generated, total searches run, and query rewrites triggered.
 
-### Download
+### Download & Copy
 
-The analysis panel includes a **Download analysis as .md** button for saving answers with Markdown formatting preserved.
+The analysis panel includes a **Copy answer** button (clipboard) and a **Download analysis as .md** button, so you can grab the answer instantly or save it with Markdown formatting preserved.
+
+### Sources
+
+A collapsed **Sources** expander below the answer lists every passage the retriever used, with stable global passage numbers, document name, section heading, page range, and relevance score. If the synthesizer cited a `[Passage N]` label, you can find the exact source here.
 
 ---
 
@@ -434,13 +438,12 @@ Prompts live in `prompts/` as plain `.txt` files — edit them directly to tune 
 ## Known Limitations (MVP)
 
 ![scanned](https://img.shields.io/badge/Scanned%20PDFs-Not%20Supported-ef4444?style=flat-square)
-![streaming](https://img.shields.io/badge/Live%20Streaming-Not%20Yet-f59e0b?style=flat-square)
+![progress](https://img.shields.io/badge/Live%20Progress-Yes-22c55e?style=flat-square)
 ![english](https://img.shields.io/badge/Language-English%20Only-f59e0b?style=flat-square)
 ![latency](https://img.shields.io/badge/Response%20Time-30--90s-f59e0b?style=flat-square)
 
 - **Scanned PDFs not supported** — documents must have a text layer. The original Uganda DPPA 2019 PDF was image-only and had to be replaced.
 - **LLM response time** — the 70B model on the remote vLLM server takes 30–90 seconds per full pipeline run depending on question complexity and network latency.
-- **No streaming within Streamlit** — the process log appears all at once after the pipeline completes (LangGraph runs synchronously). Real-time streaming requires a streaming-aware graph implementation.
 - **ChromaDB metadata filtering** — requires exact scope name match. Typos in questions ("South Africa" vs "S. Africa") are handled by the planner, not the retriever.
 - **English only** — all source documents are in English; the system does not support French-language documents (e.g., some Francophone African laws).
 

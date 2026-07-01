@@ -36,6 +36,8 @@ class PolicyRAGState(TypedDict):
     current_query: str
     current_target_country: str
     retrieved_chunks: dict       # Map: sub-question index (str) -> context string
+    retrieved_passages: list     # Structured metadata for all retrieved passages
+    last_retrieval_details: list # Latest retrieval passage summaries for UI display
     retry_count: int
     sufficiency_status: str      # "SUFFICIENT" or "INSUFFICIENT"
 
@@ -156,6 +158,8 @@ def _initial_state(question: str) -> dict:
         "current_query": "",
         "current_target_country": "",
         "retrieved_chunks": {},
+        "retrieved_passages": [],
+        "last_retrieval_details": [],
         "retry_count": 0,
         "sufficiency_status": "",
         "final_answer": "",

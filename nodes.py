@@ -13,7 +13,7 @@ import re
 import sys
 from langchain_openai import ChatOpenAI  # vLLM exposes an OpenAI-compatible API
 from langchain_core.messages import SystemMessage, HumanMessage
-from retrieval import get_vectorstore, search_by_country, search_all, format_context
+from retrieval import get_vectorstore, search_by_country, search_all, format_context, RELEVANCE_THRESHOLD
 from config import LLM_MODEL, LLM_TEMPERATURE, MAX_RETRIES, TOP_K, VLLM_BASE_URL
 
 
@@ -166,14 +166,17 @@ def retrieve_node(state: dict) -> dict:
     else:
         results = search_by_country(vectorstore, query, target_country, top_k=TOP_K)
 
-    _log(f"  Retrieved      : {len(results)} passages")
-    for i, (doc, score) in enumerate(results, 1):
-        _log(f"    Passage {i}: relevance={score:.3f} | "
-             f"section='{doc.metadata.get('section_heading','?')[:50]}' | "
-             f"pages {doc.metadata.get('start_page','?')}-{doc.metadata.get('end_page','?')}")
+    _log(f"  Raw results    : {len(results)} passages")
 
-    # Format context from results
-    context = format_context(results)
+    # Filter out low-confidence chunks so that numbering, context, and sources are consistent
+    filtered_results = [(doc, score) for doc, score in results if score >= RELEVANCE_THRESHOLD]
+
+    # Assign stable global passage numbers across all sub-questions and retries
+    existing_passages = state.get("retrieved_passages", [])
+    passage_offset = len(existing_passages)
+
+    # Format context using the global offset so passage numbers are stable
+    context = format_context(filtered_results, start=passage_offset + 1)
 
     # Store results keyed by sub-question index
     retrieved = state.get("retrieved_chunks", {})
@@ -184,21 +187,47 @@ def retrieve_node(state: dict) -> dict:
     else:
         retrieved[str(idx)] = context
 
+    # Build structured source records for final inline citations
+    new_passages = []
+    for i, (doc, score) in enumerate(filtered_results, 1):
+        meta = doc.metadata
+        new_passages.append({
+            "number": passage_offset + i,
+            "country": meta.get("country", target_country),
+            "document_name": meta.get("document_name", "?"),
+            "document_type": meta.get("document_type", "?"),
+            "section_heading": meta.get("section_heading", "?"),
+            "start_page": meta.get("start_page", "?"),
+            "end_page": meta.get("end_page", "?"),
+            "chunk_index": meta.get("chunk_index", "?"),
+            "score": round(score, 3),
+        })
+    retrieved_passages = existing_passages + new_passages
+
     short_query = query[:70] + "..." if len(query) > 70 else query
-    # Include relevance score range for transparency
-    if results:
-        scores = [score for _, score in results]
+    # Include relevance score range for transparency (only filtered results are used)
+    if filtered_results:
+        scores = [score for _, score in filtered_results]
         score_info = f" (best: {max(scores):.2f}, worst: {min(scores):.2f})"
     else:
         score_info = ""
     log_entry = (
         f"🔍 **Searching `{target_country}`** — *\"{short_query}\"*\n"
-        f"  → Retrieved **{len(results)} passages**{score_info}"
+        f"  → Retrieved **{len(filtered_results)} passages**{score_info}"
     )
+
+    # Build passage detail summaries for the UI progress indicator
+    passage_details = []
+    for p in new_passages:
+        section = p["section_heading"][:50]
+        pages = f"p.{p['start_page']}-{p['end_page']}"
+        passage_details.append(f"[{p['score']:.2f}] {section} ({pages})")
 
     return {
         "retrieved_chunks": retrieved,
+        "retrieved_passages": retrieved_passages,
         "current_query": query,
+        "last_retrieval_details": passage_details,
         "process_log": state.get("process_log", []) + [log_entry]
     }
 
@@ -343,8 +372,9 @@ def synthesize_node(state: dict) -> dict:
     # Build grounded context blocks — each sub-question gets a clearly labelled section
     # with its own passage numbers so the synthesizer knows exactly what evidence is
     # available per country and cannot bleed citations across sections.
+    # Passage numbers are already globally stable from retrieve_node; we just split
+    # the context to report the range for each block.
     full_context_parts = []
-    passage_offset = 0  # Track global passage numbers across sub-questions
     for i, sq in enumerate(state["sub_questions"]):
         raw_context = state["retrieved_chunks"].get(str(i), "")
 
@@ -357,21 +387,23 @@ def synthesize_node(state: dict) -> dict:
                 f"Do NOT fabricate provisions for this country.\n"
             )
         else:
-            # Renumber passages sequentially so the LLM can cite them unambiguously
             chunks = raw_context.split("\n\n---\n\n")
-            renumbered = []
-            for j, chunk in enumerate(chunks):
-                global_num = passage_offset + j + 1
-                # Replace "[Passage N]" with the global passage number
-                chunk = re.sub(r"\[Passage \d+\]", f"[Passage {global_num}]", chunk, count=1)
-                renumbered.append(chunk)
-            passage_offset += len(chunks)
+            # Extract the first passage number from each chunk to report the range
+            nums = []
+            for chunk in chunks:
+                m = re.search(r"\[Passage (\d+)\]", chunk)
+                if m:
+                    nums.append(int(m.group(1)))
+            if nums:
+                range_str = f"{min(nums)}–{max(nums)}"
+            else:
+                range_str = "?"
 
             block = (
                 f"═══ BLOCK {i+1}: {sq['target_country'].upper()} ═══\n"
                 f"Sub-question: {sq['question']}\n"
-                f"Available passages: {passage_offset - len(chunks) + 1}–{passage_offset}\n\n"
-                + "\n\n---\n\n".join(renumbered)
+                f"Available passages: {range_str}\n\n"
+                + raw_context
             )
 
         full_context_parts.append(block)
