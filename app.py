@@ -632,19 +632,40 @@ with app_tab:
             render_result(result)
         else:
             # Run the agentic pipeline
-            with st.spinner("Running agentic pipeline..."):
-                result = run_query(selected_question)
+            try:
+                with st.spinner("Running agentic pipeline..."):
+                    result = run_query(selected_question)
+            except Exception as e:
+                # Pipeline failure (e.g. vLLM unreachable, ChromaDB missing, timeout)
+                result = {
+                    "user_question": selected_question,
+                    "final_answer": (
+                        "⚠️ **PolicyLens could not complete the analysis.**\n\n"
+                        "The pipeline encountered an error while processing your question. "
+                        "Common causes are:\n"
+                        "- The vLLM server on ACE HPC is not reachable.\n"
+                        "- Ollama is not running locally for embeddings.\n"
+                        "- The ChromaDB vector store has not been built yet (run `python ingest.py`).\n\n"
+                        f"Technical details: `{type(e).__name__}: {e}`"
+                    ),
+                    "process_log": [f"❌ **Pipeline error:** {type(e).__name__}: {e}"],
+                    "sub_questions": [],
+                    "follow_up_questions": []
+                }
+                st.session_state.last_result = result
+                render_result(result)
+                # Do not call st.rerun() after an error so the user can read the message
+            else:
+                # Persist the completed session to disk and to session state
+                save_session(selected_question, result)
+                st.session_state.last_result = result
 
-            # Persist the completed session to disk and to session state
-            save_session(selected_question, result)
-            st.session_state.last_result = result
+                # Render the result immediately so the user sees the answer even if
+                # the st.rerun() below loses transient state.
+                render_result(result)
 
-            # Render the result immediately so the user sees the answer even if
-            # the st.rerun() below loses transient state.
-            render_result(result)
-
-            # Rerun so the follow-up suggestions are refreshed from the new result.
-            st.rerun()
+                # Rerun so the follow-up suggestions are refreshed from the new result.
+                st.rerun()
 
     # -------------------------------------------------------------------
     # Render the last result (when no new question is selected)
