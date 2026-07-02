@@ -12,6 +12,7 @@ Usage:
     streamlit run app.py
 """
 
+import hashlib
 import json
 import os
 import re
@@ -19,7 +20,6 @@ from pathlib import Path
 from datetime import datetime
 import markdown as md  # converts LLM markdown text -> HTML for safe injection
 import streamlit as st
-import streamlit.components.v1 as components
 from graph import run_query_streaming
 from config import DEMO_QUESTIONS, DOCUMENTS
 
@@ -87,34 +87,25 @@ def _render_log(lines: list, placeholder):
     )
 
 
-def _copy_button_html(text: str, label: str, key: str) -> str:
-    """Returns a small HTML/JS component that copies ``text`` to the clipboard."""
-    # Escape the text for safe insertion into JS string literal
+def _render_copy_button(text: str, label: str, key: str):
+    """Injects a clipboard-copy button using st.html (Streamlit 1.36+)."""
     safe_text = json.dumps(text)
-    return f"""
-    <div style="height:0px;">&nbsp;</div>
-    <button id="{key}" onclick="copyText()" style="
-        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.55rem 1rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(59,130,246,0.15);
-        transition: all 0.15s ease;
-    " onmouseover="this.style.background='linear-gradient(135deg, #1e40af, #2563eb)'" onmouseout="this.style.background='linear-gradient(135deg, #1d4ed8, #3b82f6)'">{label}</button>
-    <script>
-    function copyText() {{
-        navigator.clipboard.writeText({safe_text}).then(function() {{
-            var btn = document.getElementById("{key}");
-            btn.innerText = "✅ Copied!";
-            setTimeout(function() {{ btn.innerText = "{label}"; }}, 2000);
-        }});
-    }}
-    </script>
-    """
+    st.html(
+        f"""
+<button id="{key}" onclick="(function(){{
+    navigator.clipboard.writeText({safe_text}).then(function(){{
+        var b=document.getElementById('{key}');
+        b.innerText='\u2705 Copied!';
+        setTimeout(function(){{b.innerText='{label}';}},2000);
+    }});
+}})()" style="
+    background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+    color:white;border:none;border-radius:8px;
+    padding:0.55rem 1rem;font-weight:600;font-size:0.9rem;
+    cursor:pointer;width:100%;box-sizing:border-box;
+    box-shadow:0 2px 8px rgba(59,130,246,0.15);">{label}</button>
+"""
+    )
 
 
 def render_result(result: dict):
@@ -158,16 +149,20 @@ def render_result(result: dict):
             st.caption(disclaimer.strip().lstrip("*").rstrip("*"))
 
         # Action buttons: copy + download
+        # Use a content-based key so that rendering the same result twice
+        # (live render + last_result re-render) doesn't cause duplicate-ID errors.
+        dl_key = "dl_" + hashlib.md5(answer.encode()).hexdigest()[:8]
         copy_col, dl_col = st.columns(2)
         with copy_col:
-            components.html(_copy_button_html(answer, "📋 Copy answer", "btn_copy_answer"), height=38)
+            _render_copy_button(answer, "📋 Copy answer", "btn_copy_answer")
         with dl_col:
             st.download_button(
                 label="⬇️  Download analysis as .md",
                 data=answer,
                 file_name="policylens_analysis.md",
                 mime="text/markdown",
-                width="stretch"
+                width="stretch",
+                key=dl_key,
             )
 
     # Sources panel (collapsed by default)
@@ -881,23 +876,20 @@ with app_tab:
                     "follow_up_questions": []
                 }
                 st.session_state.last_result = result
-                render_result(result)
-                # Do not call st.rerun() after an error so the user can read the message
+                # Do not rerun after an error — the render at the bottom of this tab
+                # will display the error card immediately in the same script run.
 
             if pipeline_error is None:
-                # Persist the completed session to disk and to session state
+                # Persist the completed session to disk and to session state, then
+                # rerun so the follow-up suggestions are refreshed.  The single
+                # render_result call at the bottom of this tab handles all display,
+                # avoiding duplicate-element-ID errors.
                 save_session(selected_question, result)
                 st.session_state.last_result = result
-
-                # Render the result immediately so the user sees the answer even if
-                # the st.rerun() below loses transient state.
-                render_result(result)
-
-                # Rerun so the follow-up suggestions are refreshed from the new result.
                 st.rerun()
 
     # -------------------------------------------------------------------
-    # Render the last result (when no new question is selected)
+    # Render the last result (single render point — avoids duplicate IDs)
     # -------------------------------------------------------------------
     last_result = st.session_state.get("last_result")
     if last_result:
